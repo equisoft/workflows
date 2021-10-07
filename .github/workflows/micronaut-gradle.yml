@@ -47,9 +47,6 @@ on:
       disable_publications:
         required: false
 
-env:
-  working_directory: ${{ inputs.working-directory }}
-
 jobs:
   pre_checks:
     name: Pre-checks
@@ -71,7 +68,7 @@ jobs:
             [
               "${{ inputs.workflow-path }}",
               ".tool-versions",
-              "${{ env.working_directory }}/**"
+              "${{ inputs.working-directory }}/**"
             ]
           skip_after_successful_duplicate: true
 
@@ -108,7 +105,7 @@ jobs:
           PROJECT_NAME=${{ inputs.name }}
           GRADLE_SUBPROJECT=${{ inputs.gradle-subproject }}
           GRADLE_PREFIX=
-          GRADLE_PROJECT_DIR=${{ env.working_directory }}
+          GRADLE_PROJECT_DIR=${{ inputs.working-directory }}
           VERSION=${{ steps.metadata.outputs.version }}
           JAR_NAME="$PROJECT-$VERSION-all.jar"
           if [[ "$GRADLE_SUBPROJECT" != "" ]]; then
@@ -138,7 +135,7 @@ jobs:
         uses: burrunan/gradle-cache-action@v1.10
         with:
           gradle-version: wrapper
-          build-root-directory: ${{ env.working_directory }}
+          build-root-directory: ${{ inputs.working-directory }}
           gradle-dependencies-cache-key: buildSrc/**/Dependencies.kt
           arguments: ${{ needs.setup.outputs.gradle-prefix }}:ci-classes
           properties: |
@@ -171,7 +168,7 @@ jobs:
         uses: burrunan/gradle-cache-action@v1.10
         with:
           gradle-version: wrapper
-          build-root-directory: ${{ env.working_directory }}
+          build-root-directory: ${{ inputs.working-directory }}
           gradle-dependencies-cache-key: buildSrc/**/Dependencies.kt
           arguments: ${{ needs.setup.outputs.gradle-prefix }}:ci-check
           properties: |
@@ -205,7 +202,7 @@ jobs:
         uses: burrunan/gradle-cache-action@v1.10
         with:
           gradle-version: wrapper
-          build-root-directory: ${{ env.working_directory }}
+          build-root-directory: ${{ inputs.working-directory }}
           gradle-dependencies-cache-key: buildSrc/**/Dependencies.kt
           arguments: ${{ needs.setup.outputs.gradle-prefix }}:ci-unit-tests
           properties: |
@@ -262,7 +259,7 @@ jobs:
         uses: burrunan/gradle-cache-action@v1.10
         with:
           gradle-version: wrapper
-          build-root-directory: ${{ env.working_directory }}
+          build-root-directory: ${{ inputs.working-directory }}
           gradle-dependencies-cache-key: buildSrc/**/Dependencies.kt
           arguments: ${{ needs.setup.outputs.gradle-prefix }}:assemble
           properties: |
