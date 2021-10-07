@@ -84,6 +84,9 @@ jobs:
       is_release: ${{ steps.metadata.outputs.is-release }}
       publishable: ${{ steps.metadata.outputs.publishable }}
       version: ${{ steps.metadata.outputs.version }}
+      gradle-prefix: ${{ steps.gradle-metadata.outputs.gradle-prefix }}
+      gradle-project-dir: ${{ steps.gradle-metadata.outputs.gradle-project-dir }}
+      jar-name: ${{ steps.gradle-metadata.outputs.jar-name }}
 
     steps:
       - name: Checkout
@@ -97,6 +100,27 @@ jobs:
 
       - name: Setup asdf-vm
         uses: kronostechnologies/actions/with-asdf-vm@v0.0.11
+
+      - name: Find gradle project metadata
+        id: gradle-metadata
+        shell: bash
+        run: |
+          PROJECT_NAME=${{ inputs.name }}
+          GRADLE_SUBPROJECT=${{ inputs.gradle-subproject }}
+          GRADLE_PREFIX=
+          GRADLE_PROJECT_DIR=${{ env.working_directory }}
+          VERSION=${{ steps.metadata.outputs.version }}
+          JAR_NAME="$PROJECT-$VERSION-all.jar"
+          if [[ "$GRADLE_SUBPROJECT" != "" ]]; then
+            GRADLE_PREFIX=":$GRADLE_SUBPROJECT"
+            GRADLE_PROJECT_DIR="$GRADLE_PROJECT_DIR/$GRADLE_SUBPROJECT"
+            PROJECT_NAME="$GRADLE_SUBPROJECT"
+          fi
+          JAR_NAME="$PROJECT_NAME-$VERSION-all.jar"
+
+          echo "::set-output name=gradle-prefix::${GRADLE_PREFIX}"
+          echo "::set-output name=gradle-project-dir::${GRADLE_PROJECT_DIR}"
+          echo "::set-output name=jar-name::${JAR_NAME}"
 
   compile:
     name: Compile
@@ -116,7 +140,7 @@ jobs:
           gradle-version: wrapper
           build-root-directory: ${{ env.working_directory }}
           gradle-dependencies-cache-key: buildSrc/**/Dependencies.kt
-          arguments: :${{ inputs.gradle-subproject }}:ci-classes
+          arguments: ${{ needs.setup.outputs.gradle-prefix }}:ci-classes
           properties: |
             application.version=${{ needs.setup.outputs.version }}
             gpr.user=${{ secrets.GHCR_USER }}
@@ -127,7 +151,7 @@ jobs:
         if: ${{ success() && inputs.enable-openapi == 'true' }}
         with:
           name: openapi-${{ inputs.name }}-${{ needs.setup.outputs.version }}.yml
-          path: ${{ env.working_directory }}/${{ inputs.gradle-subproject }}/build/tmp/kapt3/classes/main/META-INF/swagger/${{ inputs.name }}-${{ needs.setup.outputs.version }}.yml
+          path: ${{ needs.setup.outputs.gradle-project-dir }}/build/tmp/kapt3/classes/main/META-INF/swagger/${{ inputs.name }}-${{ needs.setup.outputs.version }}.yml
           retention-days: 5
           if-no-files-found: error
 
@@ -149,7 +173,7 @@ jobs:
           gradle-version: wrapper
           build-root-directory: ${{ env.working_directory }}
           gradle-dependencies-cache-key: buildSrc/**/Dependencies.kt
-          arguments: :${{ inputs.gradle-subproject }}:ci-check
+          arguments: ${{ needs.setup.outputs.gradle-prefix }}:ci-check
           properties: |
             application.version=${{ needs.setup.outputs.version }}
             gpr.user=${{ secrets.GHCR_USER }}
@@ -161,8 +185,8 @@ jobs:
         with:
           name: static-check-reports
           path: |
-            ${{ env.working_directory }}/${{ inputs.gradle-subproject }}/build/reports/detekt
-            ${{ env.working_directory }}/${{ inputs.gradle-subproject }}/build/reports/ktlint
+            ${{ needs.setup.outputs.gradle-project-dir }}/build/reports/detekt
+            ${{ needs.setup.outputs.gradle-project-dir }}/build/reports/ktlint
           retention-days: 5
 
   unit_tests:
@@ -183,7 +207,7 @@ jobs:
           gradle-version: wrapper
           build-root-directory: ${{ env.working_directory }}
           gradle-dependencies-cache-key: buildSrc/**/Dependencies.kt
-          arguments: :${{ inputs.gradle-subproject }}:ci-unit-tests
+          arguments: ${{ needs.setup.outputs.gradle-prefix }}:ci-unit-tests
           properties: |
             application.version=${{ needs.setup.outputs.version }}
             gpr.user=${{ secrets.GHCR_USER }}
@@ -195,8 +219,8 @@ jobs:
         with:
           name: unit-test-results
           path: |
-            ${{ env.working_directory }}/${{ inputs.gradle-subproject }}/build/test-results/test
-            !${{ env.working_directory }}/${{ inputs.gradle-subproject }}/build/test-results/test/binary
+            ${{ needs.setup.outputs.gradle-project-dir }}/build/test-results/test
+            !${{ needs.setup.outputs.gradle-project-dir }}/build/test-results/test/binary
           retention-days: 5
 
       - name: Upload unit tests report
@@ -204,7 +228,7 @@ jobs:
         if: ${{ success() || failure() }}
         with:
           name: unit-tests-reports
-          path: ${{ env.working_directory }}/${{ inputs.gradle-subproject }}/build/reports/tests/test/
+          path: ${{ needs.setup.outputs.gradle-project-dir }}/build/reports/tests/test/
           retention-days: 5
 
       - name: Upload Code Coverage Result
@@ -212,7 +236,7 @@ jobs:
         if: ${{ success() || failure() }}
         with:
           name: kotlin-test-coverage.jacoco.xml
-          path: ${{ env.working_directory }}/${{ inputs.gradle-subproject }}/build/reports/jacoco/test/jacocoTestReport.xml
+          path: ${{ needs.setup.outputs.gradle-project-dir }}/build/reports/jacoco/test/jacocoTestReport.xml
           retention-days: 5
 
       - name: Create annotations
@@ -220,7 +244,7 @@ jobs:
         if: ${{ always() && github.actor != 'dependabot[bot]' }}
         with:
           check_name: Unit Tests Report
-          report_paths: ${{ env.working_directory }}/${{ inputs.gradle-subproject }}/build/test-results/test/TEST-*.xml
+          report_paths: ${{ needs.setup.outputs.gradle-project-dir }}/build/test-results/test/TEST-*.xml
 
   binary:
     name: Binary
@@ -240,7 +264,7 @@ jobs:
           gradle-version: wrapper
           build-root-directory: ${{ env.working_directory }}
           gradle-dependencies-cache-key: buildSrc/**/Dependencies.kt
-          arguments: :${{ inputs.gradle-subproject }}:assemble
+          arguments: ${{ needs.setup.outputs.gradle-prefix }}:assemble
           properties: |
             application.version=${{ needs.setup.outputs.version }}
             gpr.user=${{ secrets.GHCR_USER }}
@@ -251,7 +275,7 @@ jobs:
         if: ${{ success() }}
         with:
           name: ${{ inputs.name }}-${{ needs.setup.outputs.version }}.jar
-          path: ${{ env.working_directory }}/${{ inputs.gradle-subproject }}/build/libs/${{ inputs.gradle-subproject }}-${{ needs.setup.outputs.version }}-all.jar
+          path: ${{ needs.setup.outputs.gradle-project-dir }}/build/libs/${{ needs.setup.outputs.jar-name }}
           retention-days: 5
           if-no-files-found: error
 
@@ -297,7 +321,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           context: .
-          file: ${{ env.working_directory }}/${{ inputs.gradle-subproject }}/Dockerfile
+          file: ${{ needs.setup.outputs.gradle-project-dir }}/Dockerfile
           push: ${{ inputs.disable-publications != 'true' }}
           tags: ${{ steps.metadata.outputs.tags }}
           labels: ${{ steps.metadata.outputs.labels }}
