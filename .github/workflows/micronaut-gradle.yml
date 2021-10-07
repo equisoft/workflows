@@ -11,6 +11,16 @@ on:
         description: "Gradle subproject name. ex: bff"
         required: true
         type: string
+      enable-openapi:
+        description: "Enable openapi"
+        required: false
+        default: false
+        type: string
+      enable-openapi-sdk:
+        description: "Enable openapi SDK generation and publication"
+        required: false
+        default: false
+        type: string
       workflow-path:
         description: "Workflow file path allowing changes detection"
         default: ".github/workflows/micronaut-gradle.yml"
@@ -114,7 +124,7 @@ jobs:
 
       - name: Upload OpenAPI spec
         uses: actions/upload-artifact@v2
-        if: ${{ success() }}
+        if: ${{ success() && inputs.enable-openapi == 'true' }}
         with:
           name: openapi-${{ inputs.name }}-${{ needs.setup.outputs.version }}.yml
           path: ${{ env.working_directory }}/${{ inputs.gradle-subproject }}/build/tmp/kapt3/classes/main/META-INF/swagger/${{ inputs.name }}-${{ needs.setup.outputs.version }}.yml
@@ -292,10 +302,107 @@ jobs:
           tags: ${{ steps.metadata.outputs.tags }}
           labels: ${{ steps.metadata.outputs.labels }}
 
+  publish_sdk_micronaut:
+    name: Publish Micronaut SDK
+    runs-on: ubuntu-latest
+    needs:
+      - setup
+      - binary
+      - static_analysis
+    if: inputs.enable-openapi-sdk == 'true' && needs.setup.outputs.publishable == 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup asdf-vm
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.11
+
+      - name: Publish SDK
+        uses: kronostechnologies/actions/publish-openapi-sdk@v0.0.11
+        with:
+          publish-task-name: "publishMicronautSdk"
+          version: ${{  needs.setup.outputs.version }}
+          is-release: ${{ needs.setup.outputs.is-release }}
+          gpr-token: ${{ secrets.GHCR_TOKEN }}
+
+  publish_sdk_kotlin:
+    name: Publish Kotlin SDK
+    runs-on: ubuntu-latest
+    needs:
+      - setup
+      - binary
+      - static_analysis
+    if: inputs.enable-openapi-sdk == 'true' && needs.setup.outputs.publishable == 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup asdf-vm
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.13
+
+      - name: Publish SDK
+        uses: kronostechnologies/actions/publish-openapi-sdk@v0.0.13
+        with:
+          publish-task-name: "publishKotlinSdk"
+          version: ${{  needs.setup.outputs.version }}
+          is-release: ${{ needs.setup.outputs.is-release }}
+          gpr-token: ${{ secrets.GHCR_TOKEN }}
+
+  publish_sdk_php:
+    name: Publish PHP SDK
+    runs-on: ubuntu-latest
+    needs:
+      - setup
+      - binary
+      - static_analysis
+    if: inputs.enable-openapi-sdk == 'true' && needs.setup.outputs.publishable == 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup asdf-vm
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.13
+
+      - name: Publish SDK
+        uses: kronostechnologies/actions/publish-openapi-sdk@v0.0.13
+        with:
+          publish-task-name: "publishPhpSdk"
+          version: ${{  needs.setup.outputs.version }}
+          is-release: ${{ needs.setup.outputs.is-release }}
+          gpr-token: ${{ secrets.GHCR_TOKEN }}
+
+  publish_sdk_typescript:
+    name: Publish Typescript SDK
+    runs-on: ubuntu-latest
+    needs:
+      - setup
+      - binary
+      - static_analysis
+    if: inputs.enable-openapi-sdk == 'true' && needs.setup.outputs.publishable == 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup asdf-vm
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.8
+
+      - name: Publish SDK
+        uses: kronostechnologies/actions/publish-openapi-sdk@v0.0.8
+        with:
+          publish-task-name: "publishTypescriptSdk"
+          version: ${{  needs.setup.outputs.version }}
+          is-release: ${{ needs.setup.outputs.is-release }}
+          gpr-token: ${{ secrets.GHCR_TOKEN }}
+
+
   notify:
     name: Notify
     runs-on: ubuntu-latest
-    needs: [setup, compile, static_analysis, unit_tests, binary, image]
+    needs: [setup, compile, static_analysis, unit_tests, binary, image, publish_sdk_micronaut, publish_sdk_kotlin, publish_sdk_php, publish_sdk_typescript]
     if: failure() && needs.setup.outputs.publishable == 'true'
 
     steps:
