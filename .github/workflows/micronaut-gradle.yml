@@ -12,12 +12,12 @@ on:
         required: true
         type: string
       workflow-path:
-        description: 'Workflow file path allowing changes detection'
-        default: ".github/workflows/micronaut-gradle.yml",
+        description: "Workflow file path allowing changes detection"
+        default: ".github/workflows/micronaut-gradle.yml"
         required: false
         type: string
       working-directory:
-        description: 'Workflow working directory'
+        description: "Workflow working directory"
         default: '.'
         required: false
         type: string
@@ -59,7 +59,7 @@ jobs:
             ]
           paths: >-
             [
-              ${{ inputs.workflow-path }}
+              "${{ inputs.workflow-path }}",
               ".tool-versions",
               "${{ env.working_directory }}/**"
             ]
@@ -106,7 +106,7 @@ jobs:
           gradle-version: wrapper
           build-root-directory: ${{ env.working_directory }}
           gradle-dependencies-cache-key: buildSrc/**/Dependencies.kt
-          arguments: ":"${{ inputs.gradle-subproject }}":ci-classes"
+          arguments: :${{ inputs.gradle-subproject }}:ci-classes
           properties: |
             application.version=${{ needs.setup.outputs.version }}
             gpr.user=${{ secrets.GHCR_USER }}
@@ -139,7 +139,7 @@ jobs:
           gradle-version: wrapper
           build-root-directory: ${{ env.working_directory }}
           gradle-dependencies-cache-key: buildSrc/**/Dependencies.kt
-          arguments: ":"${{ inputs.gradle-subproject }}":ci-check"
+          arguments: :${{ inputs.gradle-subproject }}:ci-check
           properties: |
             application.version=${{ needs.setup.outputs.version }}
             gpr.user=${{ secrets.GHCR_USER }}
@@ -173,7 +173,7 @@ jobs:
           gradle-version: wrapper
           build-root-directory: ${{ env.working_directory }}
           gradle-dependencies-cache-key: buildSrc/**/Dependencies.kt
-          arguments: ":"${{ inputs.gradle-subproject }}":ci-unit-tests"
+          arguments: :${{ inputs.gradle-subproject }}:ci-unit-tests
           properties: |
             application.version=${{ needs.setup.outputs.version }}
             gpr.user=${{ secrets.GHCR_USER }}
@@ -230,7 +230,7 @@ jobs:
           gradle-version: wrapper
           build-root-directory: ${{ env.working_directory }}
           gradle-dependencies-cache-key: buildSrc/**/Dependencies.kt
-          arguments: ":"${{ inputs.gradle-subproject }}":assemble"
+          arguments: :${{ inputs.gradle-subproject }}:assemble
           properties: |
             application.version=${{ needs.setup.outputs.version }}
             gpr.user=${{ secrets.GHCR_USER }}
@@ -288,7 +288,7 @@ jobs:
           cache-to: type=gha,mode=max
           context: .
           file: ${{ env.working_directory }}/${{ inputs.gradle-subproject }}/Dockerfile
-          push: ${{ secrets.disable_publications != 'true' }}
+          push: ${{ inputs.disable-publications != 'true' }}
           tags: ${{ steps.metadata.outputs.tags }}
           labels: ${{ steps.metadata.outputs.labels }}
 
