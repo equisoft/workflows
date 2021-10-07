@@ -340,10 +340,10 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Setup asdf-vm
-        uses: kronostechnologies/actions/with-asdf-vm@v0.0.13
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.11
 
       - name: Publish SDK
-        uses: kronostechnologies/actions/publish-openapi-sdk@v0.0.13
+        uses: kronostechnologies/actions/publish-openapi-sdk@v0.0.11
         with:
           publish-task-name: "publishKotlinSdk"
           version: ${{  needs.setup.outputs.version }}
@@ -364,10 +364,10 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Setup asdf-vm
-        uses: kronostechnologies/actions/with-asdf-vm@v0.0.13
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.11
 
       - name: Publish SDK
-        uses: kronostechnologies/actions/publish-openapi-sdk@v0.0.13
+        uses: kronostechnologies/actions/publish-openapi-sdk@v0.0.11
         with:
           publish-task-name: "publishPhpSdk"
           version: ${{  needs.setup.outputs.version }}
@@ -388,10 +388,10 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Setup asdf-vm
-        uses: kronostechnologies/actions/with-asdf-vm@v0.0.8
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.11
 
       - name: Publish SDK
-        uses: kronostechnologies/actions/publish-openapi-sdk@v0.0.8
+        uses: kronostechnologies/actions/publish-openapi-sdk@v0.0.11
         with:
           publish-task-name: "publishTypescriptSdk"
           version: ${{  needs.setup.outputs.version }}
@@ -406,21 +406,8 @@ jobs:
     if: failure() && needs.setup.outputs.publishable == 'true'
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Find workflow status
-        id: workflow
-        shell: bash
-        run: |
-          STATUS=success
-          if [[ "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
-            STATUS=cancelled
-          elif [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
-            STATUS=failure
-          fi
-          echo ::set-output name=status::$STATUS
       - name: Post workflow status
         uses: kronostechnologies/actions/notify-workflow-status@v0.0.11
         with:
+          needs: ${{ toJSON(needs) }}
           slack-webhook-url: ${{ secrets.OPS_CI_WEBHOOK_URL }}
-          workflow-status: ${{ steps.workflow.outputs.status }}
