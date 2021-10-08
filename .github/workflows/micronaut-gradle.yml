@@ -15,12 +15,12 @@ on:
         description: "Enable openapi"
         required: false
         default: false
-        type: string
+        type: boolean
       enable-openapi-sdk:
         description: "Enable openapi SDK generation and publication"
         required: false
         default: false
-        type: string
+        type: boolean
       workflow-path:
         description: "Workflow file path allowing changes detection"
         default: ".github/workflows/micronaut-gradle.yml"
@@ -145,7 +145,7 @@ jobs:
 
       - name: Upload OpenAPI spec
         uses: actions/upload-artifact@v2
-        if: ${{ success() && inputs.enable-openapi == 'true' }}
+        if: ${{ success() && inputs.enable-openapi }}
         with:
           name: openapi-${{ inputs.name }}-${{ needs.setup.outputs.version }}.yml
           path: ${{ needs.setup.outputs.gradle-project-dir }}/build/tmp/kapt3/classes/main/META-INF/swagger/${{ inputs.name }}-${{ needs.setup.outputs.version }}.yml
@@ -330,7 +330,7 @@ jobs:
       - setup
       - binary
       - static_analysis
-    if: inputs.enable-openapi-sdk == 'true' && needs.setup.outputs.publishable == 'true'
+    if: inputs.enable-openapi-sdk && needs.setup.outputs.publishable == 'true'
 
     steps:
       - name: Checkout
@@ -354,7 +354,7 @@ jobs:
       - setup
       - binary
       - static_analysis
-    if: inputs.enable-openapi-sdk == 'true' && needs.setup.outputs.publishable == 'true'
+    if: inputs.enable-openapi-sdk && needs.setup.outputs.publishable == 'true'
 
     steps:
       - name: Checkout
@@ -378,7 +378,7 @@ jobs:
       - setup
       - binary
       - static_analysis
-    if: inputs.enable-openapi-sdk == 'true' && needs.setup.outputs.publishable == 'true'
+    if: inputs.enable-openapi-sdk && needs.setup.outputs.publishable == 'true'
 
     steps:
       - name: Checkout
@@ -402,7 +402,7 @@ jobs:
       - setup
       - binary
       - static_analysis
-    if: inputs.enable-openapi-sdk == 'true' && needs.setup.outputs.publishable == 'true'
+    if: inputs.enable-openapi-sdk && needs.setup.outputs.publishable == 'true'
 
     steps:
       - name: Checkout
