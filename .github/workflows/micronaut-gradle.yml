@@ -17,10 +17,10 @@ on:
         default: false
         type: boolean
       enable-openapi-sdk:
-        description: "Enable openapi SDK generation and publication"
+        description: "List of sdk name to generate separated by come.  Ex: 'php,typescript,micronaut,kotlin'"
         required: false
-        default: false
-        type: boolean
+        default: ""
+        type: string
       workflow-path:
         description: "Workflow file path allowing changes detection"
         default: ".github/workflows/micronaut-gradle.yml"
@@ -330,7 +330,7 @@ jobs:
       - setup
       - binary
       - static_analysis
-    if: inputs.enable-openapi-sdk && needs.setup.outputs.publishable == 'true'
+    if: contains(inputs.enable-openapi-sdk, 'php') && needs.setup.outputs.publishable == 'true'
 
     steps:
       - name: Checkout
@@ -354,7 +354,7 @@ jobs:
       - setup
       - binary
       - static_analysis
-    if: inputs.enable-openapi-sdk && needs.setup.outputs.publishable == 'true'
+    if: contains(inputs.enable-openapi-sdk, 'kotlin') && needs.setup.outputs.publishable == 'true'
 
     steps:
       - name: Checkout
@@ -378,7 +378,7 @@ jobs:
       - setup
       - binary
       - static_analysis
-    if: inputs.enable-openapi-sdk && needs.setup.outputs.publishable == 'true'
+    if: contains(inputs.enable-openapi-sdk, 'php') && needs.setup.outputs.publishable == 'true'
 
     steps:
       - name: Checkout
@@ -402,7 +402,7 @@ jobs:
       - setup
       - binary
       - static_analysis
-    if: inputs.enable-openapi-sdk && needs.setup.outputs.publishable == 'true'
+    if: contains(inputs.enable-openapi-sdk, 'typescript') && needs.setup.outputs.publishable == 'true'
 
     steps:
       - name: Checkout
@@ -418,7 +418,6 @@ jobs:
           version: ${{  needs.setup.outputs.version }}
           is-release: ${{ needs.setup.outputs.is-release }}
           gpr-token: ${{ secrets.GHCR_TOKEN }}
-
 
   notify:
     name: Notify
