@@ -36,6 +36,11 @@ on:
         required: false
         default: false
         type: boolean
+      openapi-file-prefix:
+        description: "Prefix for the openapi.yml file. Usually a snake-case of the @OpenAPIDefinition title."
+        required: false
+        default: ""
+        type: string
       enable-openapi-sdk:
         description: "List of sdk name to generate separated by come.  Ex: 'php,typescript,micronaut,kotlin'"
         required: false
@@ -104,6 +109,7 @@ jobs:
       gradle-prefix: ${{ steps.gradle-metadata.outputs.gradle-prefix }}
       gradle-project-dir: ${{ steps.gradle-metadata.outputs.gradle-project-dir }}
       jar-name: ${{ steps.gradle-metadata.outputs.jar-name }}
+      openapi-file: ${{ steps.gradle-metadata.outputs.openapi-file }}
 
     steps:
       - name: Checkout
@@ -134,10 +140,16 @@ jobs:
             PROJECT_NAME="$GRADLE_SUBPROJECT"
           fi
           JAR_NAME="$PROJECT_NAME-$VERSION-all.jar"
+          OPENAPI_FILE_PREFIX=${{ inputs.openapi-file-prefix }}
+          if [[ "$OPENAPI_FILE_PREFIX" == "" ]]; then
+            OPENAPI_FILE_PREFIX="$PROJECT_NAME"
+          fi
+          OPENAPI_FILE="$OPENAPI_FILE_PREFIX-$VERSION.yml"
 
           echo "::set-output name=gradle-prefix::${GRADLE_PREFIX}"
           echo "::set-output name=gradle-project-dir::${GRADLE_PROJECT_DIR}"
           echo "::set-output name=jar-name::${JAR_NAME}"
+          echo "::set-output name=openapi-file::${OPENAPI_FILE}"
 
   compile:
     name: Compile
@@ -168,7 +180,7 @@ jobs:
         if: success() && inputs.enable-openapi
         with:
           name: openapi-${{ inputs.name }}-${{ needs.setup.outputs.version }}.yml
-          path: ${{ needs.setup.outputs.gradle-project-dir }}/build/tmp/kapt3/classes/main/META-INF/swagger/${{ inputs.name }}-${{ needs.setup.outputs.version }}.yml
+          path: ${{ needs.setup.outputs.gradle-project-dir }}/build/tmp/kapt3/classes/main/META-INF/swagger/${{ needs.setup.outputs.openapi-file }}
           retention-days: 5
           if-no-files-found: error
 
