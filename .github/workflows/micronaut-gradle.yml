@@ -332,8 +332,8 @@ jobs:
     if: |
       !failure() &&
       !cancelled() &&
-      (!contains(inputs.enabled-checks, 'unitTests') || success('unit_tests')) &&
-      (!contains(inputs.enabled-checks, 'e2eTests') || success('e2e_tests'))
+      (contains(inputs.enabled-checks, 'unitTests') || contains(inputs.enabled-checks, 'e2eTests')) &&
+      (success('unit_tests') || success('e2e_tests'))
 
     steps:
       - name: Checkout
