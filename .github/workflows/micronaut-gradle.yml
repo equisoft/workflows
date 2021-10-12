@@ -122,13 +122,14 @@ jobs:
           GRADLE_PROJECT_DIR=${{ inputs.working-directory }}
           VERSION=${{ steps.metadata.outputs.version }}
           JAR_NAME="$PROJECT-$VERSION-all.jar"
+
           if [[ "$GRADLE_SUBPROJECT" != "" ]]; then
             GRADLE_PREFIX=":$GRADLE_SUBPROJECT"
             GRADLE_PROJECT_DIR="$GRADLE_PROJECT_DIR/$GRADLE_SUBPROJECT"
-            PROJECT_NAME="$GRADLE_SUBPROJECT"
+            PROJECT_NAME="$PROJECT_NAME-$GRADLE_SUBPROJECT"
+            JAR_NAME="$GRADLE_SUBPROJECT-$VERSION-all.jar"
           fi
-          JAR_NAME="$PROJECT_NAME-$VERSION-all.jar"
-          OPENAPI_FILE_PREFIX=${{ inputs.openapi-file-prefix }}
+
           if [[ "$OPENAPI_FILE_PREFIX" == "" ]]; then
             OPENAPI_FILE_PREFIX="$PROJECT_NAME"
           fi
