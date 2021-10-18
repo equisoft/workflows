@@ -91,7 +91,7 @@ jobs:
     if: needs.pre_checks.outputs.should_skip != 'true'
     runs-on: ubuntu-latest
     outputs:
-      is_release: ${{ steps.metadata.outputs.is-release }}
+      is-release: ${{ steps.metadata.outputs.is-release }}
       publishable: ${{ steps.metadata.outputs.publishable }}
       version: ${{ steps.metadata.outputs.version }}
       gradle-prefix: ${{ steps.gradle-metadata.outputs.gradle-prefix }}
@@ -412,7 +412,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Validate App Dockerfile
+      - name: Validate Dockerfile
         uses: hadolint/hadolint-action@v1.6.0
         with:
           dockerfile: ${{ needs.setup.outputs.gradle-project-dir }}/Dockerfile
@@ -439,7 +439,7 @@ jobs:
         with:
           title: ${{ inputs.name }}
           image-name: ${{ secrets.ECR_REGISTRY }}/${{ inputs.name }}
-          release: ${{ needs.setup.outputs.is_release }}
+          release: ${{ needs.setup.outputs.is-release }}
           version: ${{ needs.setup.outputs.version }}
 
       - name: Configure AWS Credentials
