@@ -11,13 +11,13 @@ on:
         description: "Gradle subproject name. ex: bff"
         required: true
         type: string
-      enabled-checks:
+      checks:
         description: |
-          List of enabled check separated by coma.
-          default: staticAnalysis,unitTests,dockerfileLint
-          available checks: staticAnalysis,unitTests,e2eTest,dockerfileLint
+          List of enabled check separated by comma.
+          default: static_analysis,unit_tests,lint_dockerfiles
+          available checks: static_analysis,unit_tests,e2e_tests,lint_dockerfiles
         required: false
-        default: "staticAnalysis,unitTests,dockerfileLint"
+        default: "static_analysis,unit_tests,lint_dockerfiles"
         type: string
       enable-openapi:
         description: "Enable openapi"
@@ -177,7 +177,7 @@ jobs:
     name: Static analysis
     runs-on: ubuntu-latest
     needs: [setup, compile]
-    if: contains(inputs.enabled-checks, 'staticAnalysis')
+    if: contains(inputs.checks, 'static_analysis')
 
     steps:
       - name: Checkout
@@ -212,7 +212,7 @@ jobs:
     name: Unit tests
     runs-on: ubuntu-latest
     needs: [setup, compile]
-    if: contains(inputs.enabled-checks, 'unitTests')
+    if: contains(inputs.checks, 'unit_tests')
 
     steps:
       - name: Checkout
@@ -271,7 +271,7 @@ jobs:
     name: E2E tests
     runs-on: ubuntu-latest
     needs: [setup, compile]
-    if: contains(inputs.enabled-checks, 'e2eTests')
+    if: contains(inputs.checks, 'e2e_tests')
 
     steps:
       - name: Checkout
@@ -333,7 +333,7 @@ jobs:
     if: |
       !failure() &&
       !cancelled() &&
-      (contains(inputs.enabled-checks, 'unitTests') || contains(inputs.enabled-checks, 'e2eTests')) &&
+      (contains(inputs.checks, 'unit_tests') || contains(inputs.checks, 'e2e_tests')) &&
       (success('unit_tests') || success('e2e_tests'))
 
     steps:
@@ -407,7 +407,7 @@ jobs:
     name: Lint Dockerfiles
     runs-on: ubuntu-latest
     needs: [setup]
-    if: contains(inputs.enabled-checks, 'dockerfileLint')
+    if: contains(inputs.checks, 'lint_dockerfiles')
 
     steps:
       - name: Checkout
@@ -425,9 +425,9 @@ jobs:
       needs.setup.outputs.publishable == 'true' &&
       !failure() &&
       !cancelled() &&
-      (! (contains(inputs.enabled-checks, 'unitTests') && contains(inputs.enabled-checks, 'e2eTests')) || success('test_coverage_verification')) &&
-      (!contains(inputs.enabled-checks, 'staticAnalysis') || success('static_analysis')) &&
-      (!contains(inputs.enabled-checks, 'dockerfileLint') || success('lint_dockerfiles'))
+      (! (contains(inputs.checks, 'unit_tests') && contains(inputs.checks, 'e2e_tests')) || success('test_coverage_verification')) &&
+      (!contains(inputs.checks, 'static_analysis') || success('static_analysis')) &&
+      (!contains(inputs.checks, 'lint_dockerfiles') || success('lint_dockerfiles'))
 
     steps:
       - name: Checkout
@@ -483,8 +483,8 @@ jobs:
       needs.setup.outputs.publishable == 'true' &&
       !failure() &&
       !cancelled() &&
-      (! (contains(inputs.enabled-checks, 'unitTests') && contains(inputs.enabled-checks, 'e2eTests')) || success('test_coverage_verification')) &&
-      (!contains(inputs.enabled-checks, 'staticAnalysis') || success('static_analysis'))
+      (! (contains(inputs.checks, 'unit_tests') && contains(inputs.checks, 'e2e_tests')) || success('test_coverage_verification')) &&
+      (!contains(inputs.checks, 'static_analysis') || success('static_analysis'))
 
     steps:
       - name: Checkout
@@ -514,8 +514,8 @@ jobs:
       needs.setup.outputs.publishable == 'true' &&
       !failure() &&
       !cancelled() &&
-      (! (contains(inputs.enabled-checks, 'unitTests') && contains(inputs.enabled-checks, 'e2eTests')) || success('test_coverage_verification')) &&
-      (!contains(inputs.enabled-checks, 'staticAnalysis') || success('static_analysis'))
+      (! (contains(inputs.checks, 'unit_tests') && contains(inputs.checks, 'e2e_tests')) || success('test_coverage_verification')) &&
+      (!contains(inputs.checks, 'static_analysis') || success('static_analysis'))
 
     steps:
       - name: Checkout
@@ -545,8 +545,8 @@ jobs:
       needs.setup.outputs.publishable == 'true' &&
       !failure() &&
       !cancelled() &&
-      (! (contains(inputs.enabled-checks, 'unitTests') && contains(inputs.enabled-checks, 'e2eTests')) || success('test_coverage_verification')) &&
-      (!contains(inputs.enabled-checks, 'staticAnalysis') || success('static_analysis'))
+      (! (contains(inputs.checks, 'unit_tests') && contains(inputs.checks, 'e2e_tests')) || success('test_coverage_verification')) &&
+      (!contains(inputs.checks, 'static_analysis') || success('static_analysis'))
 
     steps:
       - name: Checkout
@@ -576,8 +576,8 @@ jobs:
       needs.setup.outputs.publishable == 'true' &&
       !failure() &&
       !cancelled() &&
-      (! (contains(inputs.enabled-checks, 'unitTests') && contains(inputs.enabled-checks, 'e2eTests')) || success('test_coverage_verification')) &&
-      (!contains(inputs.enabled-checks, 'staticAnalysis') || success('static_analysis'))
+      (! (contains(inputs.checks, 'unit_tests') && contains(inputs.checks, 'e2e_tests')) || success('test_coverage_verification')) &&
+      (!contains(inputs.checks, 'static_analysis') || success('static_analysis'))
 
     steps:
       - name: Checkout
