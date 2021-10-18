@@ -34,6 +34,11 @@ on:
         required: false
         default: ""
         type: string
+      enable-publication:
+        description: "Enable image publication to docker registry"
+        required: false
+        default: true
+        type: boolean
       workflow-path:
         description: "Workflow file path allowing changes detection"
         default: ".github/workflows/micronaut-gradle.yml"
@@ -57,8 +62,6 @@ on:
         required: true
       SLACK_NOTIFICATION_WEBHOOK_URL:
         required: true
-      disable_publications:
-        required: false
 
 jobs:
   pre_checks:
@@ -466,7 +469,7 @@ jobs:
           cache-to: type=gha,mode=max
           context: .
           file: ${{ needs.setup.outputs.gradle-project-dir }}/Dockerfile
-          push: ${{ inputs.disable-publications != 'true' }}
+          push: ${{ inputs.enable-publication }}
           tags: ${{ steps.metadata.outputs.tags }}
           labels: ${{ steps.metadata.outputs.labels }}
 
