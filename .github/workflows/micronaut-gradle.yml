@@ -55,7 +55,7 @@ on:
         required: true
       ECR_AWS_SECRET_ACCESS_KEY:
         required: true
-      OPS_CI_WEBHOOK_URL:
+      SLACK_NOTIFICATION_WEBHOOK_URL:
         required: true
       disable_publications:
         required: false
@@ -618,4 +618,4 @@ jobs:
         uses: kronostechnologies/actions/notify-workflow-status@v0.0.11
         with:
           needs: ${{ toJSON(needs) }}
-          slack-webhook-url: ${{ secrets.OPS_CI_WEBHOOK_URL }}
+          slack-webhook-url: ${{ secrets.SLACK_NOTIFICATION_WEBHOOK_URL }}
