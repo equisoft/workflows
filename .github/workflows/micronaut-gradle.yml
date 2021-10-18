@@ -45,9 +45,9 @@ on:
         required: false
         type: string
     secrets:
-      GHCR_USER:
+      GPR_USER:
         required: true
-      GHCR_TOKEN:
+      GPR_KEY:
         required: true
       ECR_REGISTRY:
         required: true
@@ -161,8 +161,8 @@ jobs:
           arguments: ${{ needs.setup.outputs.gradle-prefix }}:ci-classes
           properties: |
             application.version=${{ needs.setup.outputs.version }}
-            gpr.user=${{ secrets.GHCR_USER }}
-            gpr.key=${{ secrets.GHCR_TOKEN }}
+            gpr.user=${{ secrets.GPR_USER }}
+            gpr.key=${{ secrets.GPR_KEY }}
 
       - name: Upload OpenAPI spec
         uses: actions/upload-artifact@v2
@@ -195,8 +195,8 @@ jobs:
           arguments: ${{ needs.setup.outputs.gradle-prefix }}:ci-check
           properties: |
             application.version=${{ needs.setup.outputs.version }}
-            gpr.user=${{ secrets.GHCR_USER }}
-            gpr.key=${{ secrets.GHCR_TOKEN }}
+            gpr.user=${{ secrets.GPR_USER }}
+            gpr.key=${{ secrets.GPR_KEY }}
 
       - name: Upload results
         uses: actions/upload-artifact@v2
@@ -230,8 +230,8 @@ jobs:
           arguments: ${{ needs.setup.outputs.gradle-prefix }}:ci-unit-tests
           properties: |
             application.version=${{ needs.setup.outputs.version }}
-            gpr.user=${{ secrets.GHCR_USER }}
-            gpr.key=${{ secrets.GHCR_TOKEN }}
+            gpr.user=${{ secrets.GPR_USER }}
+            gpr.key=${{ secrets.GPR_KEY }}
 
       - name: Upload unit tests results
         uses: actions/upload-artifact@v2
@@ -289,8 +289,8 @@ jobs:
           arguments: ${{ needs.setup.outputs.gradle-prefix }}:ci-e2e
           properties: |
             application.version=${{ needs.setup.outputs.version }}
-            gpr.user=${{ secrets.GHCR_USER }}
-            gpr.key=${{ secrets.GHCR_TOKEN }}
+            gpr.user=${{ secrets.GPR_USER }}
+            gpr.key=${{ secrets.GPR_KEY }}
 
       - name: Upload e2e tests results
         uses: actions/upload-artifact@v2
@@ -359,8 +359,8 @@ jobs:
           arguments: ${{ needs.setup.outputs.gradle-prefix }}:ci-coverage-verification
           properties: |
             application.version=${{ needs.setup.outputs.version }}
-            gpr.user=${{ secrets.GHCR_USER }}
-            gpr.key=${{ secrets.GHCR_TOKEN }}
+            gpr.user=${{ secrets.GPR_USER }}
+            gpr.key=${{ secrets.GPR_KEY }}
 
       - name: Upload Code Coverage Result
         uses: actions/upload-artifact@v2
@@ -391,8 +391,8 @@ jobs:
           arguments: ${{ needs.setup.outputs.gradle-prefix }}:assemble
           properties: |
             application.version=${{ needs.setup.outputs.version }}
-            gpr.user=${{ secrets.GHCR_USER }}
-            gpr.key=${{ secrets.GHCR_TOKEN }}
+            gpr.user=${{ secrets.GPR_USER }}
+            gpr.key=${{ secrets.GPR_KEY }}
 
       - name: Upload JAR
         uses: actions/upload-artifact@v2
@@ -460,8 +460,8 @@ jobs:
         with:
           build-args: |
             APPLICATION_VERSION=${{ needs.setup.outputs.version }}
-            GITHUB_USER=${{ secrets.GHCR_USER }}
-            GITHUB_TOKEN=${{ secrets.GHCR_TOKEN }}
+            GPR_USER=${{ secrets.GPR_USER }}
+            GPR_KEY=${{ secrets.GPR_KEY }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           context: .
@@ -499,7 +499,7 @@ jobs:
           publish-task-name: "publishMicronautSdk"
           version: ${{  needs.setup.outputs.version }}
           is-release: ${{ needs.setup.outputs.is-release }}
-          gpr-token: ${{ secrets.GHCR_TOKEN }}
+          gpr-token: ${{ secrets.GPR_KEY }}
 
   publish_sdk_kotlin:
     name: Publish Kotlin SDK
@@ -530,7 +530,7 @@ jobs:
           publish-task-name: "publishKotlinSdk"
           version: ${{  needs.setup.outputs.version }}
           is-release: ${{ needs.setup.outputs.is-release }}
-          gpr-token: ${{ secrets.GHCR_TOKEN }}
+          gpr-token: ${{ secrets.GPR_KEY }}
 
   publish_sdk_php:
     name: Publish PHP SDK
@@ -561,7 +561,7 @@ jobs:
           publish-task-name: "publishPhpSdk"
           version: ${{  needs.setup.outputs.version }}
           is-release: ${{ needs.setup.outputs.is-release }}
-          gpr-token: ${{ secrets.GHCR_TOKEN }}
+          gpr-token: ${{ secrets.GPR_KEY }}
 
   publish_sdk_typescript:
     name: Publish Typescript SDK
@@ -592,7 +592,7 @@ jobs:
           publish-task-name: "publishTypescriptSdk"
           version: ${{  needs.setup.outputs.version }}
           is-release: ${{ needs.setup.outputs.is-release }}
-          gpr-token: ${{ secrets.GHCR_TOKEN }}
+          gpr-token: ${{ secrets.GPR_KEY }}
 
   notify:
     name: Notify
