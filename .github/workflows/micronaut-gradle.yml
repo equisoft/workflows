@@ -133,6 +133,7 @@ jobs:
             JAR_NAME="$GRADLE_SUBPROJECT-$VERSION-all.jar"
           fi
 
+          OPENAPI_FILE_PREFIX=${{ inputs.openapi-file-prefix }}
           if [[ "$OPENAPI_FILE_PREFIX" == "" ]]; then
             OPENAPI_FILE_PREFIX="$PROJECT_NAME"
           fi
