@@ -1,0 +1,625 @@
+name: Micronaut Gradle
+
+on:
+  workflow_call:
+    inputs:
+      name:
+        description: "Application name. Used as base to generate jar name, image name, sdk name, etc..."
+        required: true
+        type: string
+      gradle-subproject:
+        description: "Gradle subproject name. ex: bff"
+        required: true
+        type: string
+      checks:
+        description: |
+          List of enabled check separated by comma.
+          default: static_analysis,unit_tests,lint_dockerfiles
+          available checks: static_analysis,unit_tests,e2e_tests,lint_dockerfiles
+        required: false
+        default: "static_analysis,unit_tests,lint_dockerfiles"
+        type: string
+      enable-openapi:
+        description: "Enable openapi"
+        required: false
+        default: false
+        type: boolean
+      openapi-file-prefix:
+        description: "Prefix for the openapi.yml file. Usually a snake-case of the @OpenAPIDefinition title."
+        required: false
+        default: ""
+        type: string
+      enable-openapi-sdk:
+        description: "List of sdk name to generate separated by come.  Ex: 'php,typescript,micronaut,kotlin'"
+        required: false
+        default: ""
+        type: string
+      enable-publication:
+        description: "Enable image publication to docker registry"
+        required: false
+        default: true
+        type: boolean
+      workflow-path:
+        description: "Workflow file path allowing changes detection"
+        default: ".github/workflows/micronaut-gradle.yml"
+        required: false
+        type: string
+      working-directory:
+        description: "Workflow working directory"
+        default: '.'
+        required: false
+        type: string
+    secrets:
+      GPR_USER:
+        required: true
+      GPR_KEY:
+        required: true
+      ECR_REGISTRY:
+        required: true
+      ECR_AWS_ACCESS_KEY_ID:
+        required: true
+      ECR_AWS_SECRET_ACCESS_KEY:
+        required: true
+      SLACK_NOTIFICATION_WEBHOOK_URL:
+        required: true
+
+jobs:
+  pre_checks:
+    name: Pre-checks
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@v3.4.1
+        with:
+          concurrent_skipping: same_content
+          do_not_skip: >-
+            [
+              "push",
+              "schedule",
+              "workflow_dispatch"
+            ]
+          paths: >-
+            [
+              "${{ inputs.workflow-path }}",
+              ".tool-versions",
+              "${{ inputs.working-directory }}/**"
+            ]
+          skip_after_successful_duplicate: true
+
+  setup:
+    name: Setup
+    needs: [pre_checks]
+    if: needs.pre_checks.outputs.should_skip != 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      is-release: ${{ steps.metadata.outputs.is-release }}
+      publishable: ${{ steps.metadata.outputs.publishable }}
+      version: ${{ steps.metadata.outputs.version }}
+      gradle-prefix: ${{ steps.gradle-metadata.outputs.gradle-prefix }}
+      gradle-project-dir: ${{ steps.gradle-metadata.outputs.gradle-project-dir }}
+      jar-name: ${{ steps.gradle-metadata.outputs.jar-name }}
+      openapi-file: ${{ steps.gradle-metadata.outputs.openapi-file }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Find application metadata
+        id: metadata
+        uses: kronostechnologies/actions/application-metadata@v0.0.11
+
+      - name: Setup asdf-vm
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.11
+
+      - name: Find gradle project metadata
+        id: gradle-metadata
+        shell: bash
+        run: |
+          PROJECT_NAME=${{ inputs.name }}
+          GRADLE_SUBPROJECT=${{ inputs.gradle-subproject }}
+          GRADLE_PREFIX=
+          GRADLE_PROJECT_DIR=${{ inputs.working-directory }}
+          VERSION=${{ steps.metadata.outputs.version }}
+          JAR_NAME="$PROJECT-$VERSION-all.jar"
+
+          if [[ "$GRADLE_SUBPROJECT" != "" ]]; then
+            GRADLE_PREFIX=":$GRADLE_SUBPROJECT"
+            GRADLE_PROJECT_DIR="$GRADLE_PROJECT_DIR/$GRADLE_SUBPROJECT"
+            PROJECT_NAME="$PROJECT_NAME-$GRADLE_SUBPROJECT"
+            JAR_NAME="$GRADLE_SUBPROJECT-$VERSION-all.jar"
+          fi
+
+          OPENAPI_FILE_PREFIX=${{ inputs.openapi-file-prefix }}
+          if [[ "$OPENAPI_FILE_PREFIX" == "" ]]; then
+            OPENAPI_FILE_PREFIX="$PROJECT_NAME"
+          fi
+          OPENAPI_FILE="$OPENAPI_FILE_PREFIX-$VERSION.yml"
+
+          echo "::set-output name=gradle-prefix::${GRADLE_PREFIX}"
+          echo "::set-output name=gradle-project-dir::${GRADLE_PROJECT_DIR}"
+          echo "::set-output name=jar-name::${JAR_NAME}"
+          echo "::set-output name=openapi-file::${OPENAPI_FILE}"
+
+  compile:
+    name: Compile
+    runs-on: ubuntu-latest
+    needs: [setup]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup asdf-vm
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.11
+
+      - name: Compile source and test code
+        uses: burrunan/gradle-cache-action@v1.10
+        with:
+          gradle-version: wrapper
+          build-root-directory: ${{ inputs.working-directory }}
+          gradle-dependencies-cache-key: buildSrc/**/Dependencies.kt
+          arguments: ${{ needs.setup.outputs.gradle-prefix }}:ci-classes
+          properties: |
+            application.version=${{ needs.setup.outputs.version }}
+            gpr.user=${{ secrets.GPR_USER }}
+            gpr.key=${{ secrets.GPR_KEY }}
+
+      - name: Upload OpenAPI spec
+        uses: actions/upload-artifact@v2
+        if: success() && inputs.enable-openapi
+        with:
+          name: openapi-${{ inputs.name }}-${{ needs.setup.outputs.version }}.yml
+          path: ${{ needs.setup.outputs.gradle-project-dir }}/build/tmp/kapt3/classes/main/META-INF/swagger/${{ needs.setup.outputs.openapi-file }}
+          retention-days: 5
+          if-no-files-found: error
+
+  static_analysis:
+    name: Static analysis
+    runs-on: ubuntu-latest
+    needs: [setup, compile]
+    if: contains(inputs.checks, 'static_analysis')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup asdf-vm
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.11
+
+      - name: Run static check analysis
+        uses: burrunan/gradle-cache-action@v1.10
+        with:
+          gradle-version: wrapper
+          build-root-directory: ${{ inputs.working-directory }}
+          gradle-dependencies-cache-key: buildSrc/**/Dependencies.kt
+          arguments: ${{ needs.setup.outputs.gradle-prefix }}:ci-check
+          properties: |
+            application.version=${{ needs.setup.outputs.version }}
+            gpr.user=${{ secrets.GPR_USER }}
+            gpr.key=${{ secrets.GPR_KEY }}
+
+      - name: Upload results
+        uses: actions/upload-artifact@v2
+        if: success() || failure()
+        with:
+          name: static-check-reports
+          path: |
+            ${{ needs.setup.outputs.gradle-project-dir }}/build/reports/detekt
+            ${{ needs.setup.outputs.gradle-project-dir }}/build/reports/ktlint
+          retention-days: 5
+
+  unit_tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    needs: [setup, compile]
+    if: contains(inputs.checks, 'unit_tests')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup asdf-vm
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.11
+
+      - name: Run unit tests
+        uses: burrunan/gradle-cache-action@v1.10
+        with:
+          gradle-version: wrapper
+          build-root-directory: ${{ inputs.working-directory }}
+          gradle-dependencies-cache-key: buildSrc/**/Dependencies.kt
+          arguments: ${{ needs.setup.outputs.gradle-prefix }}:ci-unit-tests
+          properties: |
+            application.version=${{ needs.setup.outputs.version }}
+            gpr.user=${{ secrets.GPR_USER }}
+            gpr.key=${{ secrets.GPR_KEY }}
+
+      - name: Upload unit tests results
+        uses: actions/upload-artifact@v2
+        if: success() || failure()
+        with:
+          name: unit-test-results
+          path: |
+            ${{ needs.setup.outputs.gradle-project-dir }}/build/test-results/test
+            !${{ needs.setup.outputs.gradle-project-dir }}/build/test-results/test/binary
+          retention-days: 5
+
+      - name: Upload unit tests report
+        uses: actions/upload-artifact@v2
+        if: success() || failure()
+        with:
+          name: unit-tests-reports
+          path: ${{ needs.setup.outputs.gradle-project-dir }}/build/reports/tests/test/
+          retention-days: 5
+
+      - name: Upload JaCoCo build
+        uses: actions/upload-artifact@v2
+        if: success() || failure()
+        with:
+          name: jacoco-build
+          path: ${{ needs.setup.outputs.gradle-project-dir }}/build/jacoco/test.exec
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Create annotations
+        uses: mikepenz/action-junit-report@v2.4.3
+        if: always() && github.actor != 'dependabot[bot]'
+        with:
+          check_name: Unit Tests Report
+          report_paths: ${{ needs.setup.outputs.gradle-project-dir }}/build/test-results/test/TEST-*.xml
+
+  e2e_tests:
+    name: E2E tests
+    runs-on: ubuntu-latest
+    needs: [setup, compile]
+    if: contains(inputs.checks, 'e2e_tests')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup asdf-vm
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.11
+
+      - name: Run unit tests
+        uses: burrunan/gradle-cache-action@v1.10
+        with:
+          gradle-version: wrapper
+          build-root-directory: ${{ inputs.working-directory }}
+          gradle-dependencies-cache-key: buildSrc/**/Dependencies.kt
+          arguments: ${{ needs.setup.outputs.gradle-prefix }}:ci-e2e
+          properties: |
+            application.version=${{ needs.setup.outputs.version }}
+            gpr.user=${{ secrets.GPR_USER }}
+            gpr.key=${{ secrets.GPR_KEY }}
+
+      - name: Upload e2e tests results
+        uses: actions/upload-artifact@v2
+        if: success() || failure()
+        with:
+          name: e2e-test-results
+          path: |
+            ${{ needs.setup.outputs.gradle-project-dir }}/build/test-results/e2e
+            !${{ needs.setup.outputs.gradle-project-dir }}/build/test-results/e2e/binary
+          retention-days: 5
+
+      - name: Upload e2e tests report
+        uses: actions/upload-artifact@v2
+        if: success() || failure()
+        with:
+          name: e2e-tests-reports
+          path: ${{ needs.setup.outputs.gradle-project-dir }}/build/reports/tests/e2e/
+          retention-days: 5
+
+      - name: Upload JaCoCo build
+        uses: actions/upload-artifact@v2
+        if: success() || failure()
+        with:
+          name: jacoco-build
+          path: ${{ needs.setup.outputs.gradle-project-dir }}/build/jacoco/e2e.exec
+          retention-days: 1
+          if-no-files-found: error
+
+      - name: Create annotations
+        uses: mikepenz/action-junit-report@v2.4.3
+        if: always() && github.actor != 'dependabot[bot]'
+        with:
+          check_name: E2E Tests Report
+          report_paths: ${{ needs.setup.outputs.gradle-project-dir }}/build/test-results/e2e/TEST-*.xml
+
+  test_coverage_verification:
+    name: Test coverage verification
+    runs-on: ubuntu-latest
+    needs: [setup, unit_tests, e2e_tests]
+    if: |
+      !failure() &&
+      !cancelled() &&
+      (contains(inputs.checks, 'unit_tests') || contains(inputs.checks, 'e2e_tests')) &&
+      (success('unit_tests') || success('e2e_tests'))
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Download jacoco build
+        uses: actions/download-artifact@v2
+        with:
+          name: jacoco-build
+          path: ${{ needs.setup.outputs.gradle-project-dir }}/build/jacoco/
+
+      - name: Setup asdf-vm
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.8
+
+      # JaCoCo
+      - name: Run unit tests
+        uses: burrunan/gradle-cache-action@v1.10
+        with:
+          gradle-version: wrapper
+          build-root-directory: ${{ inputs.working-directory }}
+          gradle-dependencies-cache-key: buildSrc/**/Dependencies.kt
+          arguments: ${{ needs.setup.outputs.gradle-prefix }}:ci-coverage-verification
+          properties: |
+            application.version=${{ needs.setup.outputs.version }}
+            gpr.user=${{ secrets.GPR_USER }}
+            gpr.key=${{ secrets.GPR_KEY }}
+
+      - name: Upload Code Coverage Result
+        uses: actions/upload-artifact@v2
+        if: success() || failure()
+        with:
+          name: kotlin-test-coverage.jacoco.xml
+          path: ${{ needs.setup.outputs.gradle-project-dir }}/build/reports/jacoco/test/jacocoTestReport.xml
+          retention-days: 5
+
+  binary:
+    name: Binary
+    runs-on: ubuntu-latest
+    needs: [setup, compile]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup asdf-vm
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.11
+
+      - name: Assemble JAR
+        uses: burrunan/gradle-cache-action@v1.10
+        with:
+          gradle-version: wrapper
+          build-root-directory: ${{ inputs.working-directory }}
+          gradle-dependencies-cache-key: buildSrc/**/Dependencies.kt
+          arguments: ${{ needs.setup.outputs.gradle-prefix }}:assemble
+          properties: |
+            application.version=${{ needs.setup.outputs.version }}
+            gpr.user=${{ secrets.GPR_USER }}
+            gpr.key=${{ secrets.GPR_KEY }}
+
+      - name: Upload JAR
+        uses: actions/upload-artifact@v2
+        if: success()
+        with:
+          name: ${{ inputs.name }}-${{ needs.setup.outputs.version }}.jar
+          path: ${{ needs.setup.outputs.gradle-project-dir }}/build/libs/${{ needs.setup.outputs.jar-name }}
+          retention-days: 5
+          if-no-files-found: error
+
+  lint_dockerfiles:
+    name: Lint Dockerfiles
+    runs-on: ubuntu-latest
+    needs: [setup]
+    if: contains(inputs.checks, 'lint_dockerfiles')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Validate Dockerfile
+        uses: hadolint/hadolint-action@v1.6.0
+        with:
+          dockerfile: ${{ needs.setup.outputs.gradle-project-dir }}/Dockerfile
+
+  image:
+    name: Build image
+    runs-on: ubuntu-latest
+    needs: [setup, lint_dockerfiles, static_analysis, test_coverage_verification]
+    if: |
+      needs.setup.outputs.publishable == 'true' &&
+      !failure() &&
+      !cancelled() &&
+      (! (contains(inputs.checks, 'unit_tests') && contains(inputs.checks, 'e2e_tests')) || success('test_coverage_verification')) &&
+      (!contains(inputs.checks, 'static_analysis') || success('static_analysis')) &&
+      (!contains(inputs.checks, 'lint_dockerfiles') || success('lint_dockerfiles'))
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Prepare image data
+        id: metadata
+        uses: kronostechnologies/actions/docker-metadata@v0.0.11
+        with:
+          title: ${{ inputs.name }}
+          image-name: ${{ secrets.ECR_REGISTRY }}/${{ inputs.name }}
+          release: ${{ needs.setup.outputs.is-release }}
+          version: ${{ needs.setup.outputs.version }}
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.ECR_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.ECR_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.ECR_AWS_REGION }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Build and push
+        uses: docker/build-push-action@v2
+        with:
+          build-args: |
+            APPLICATION_VERSION=${{ needs.setup.outputs.version }}
+            GPR_USER=${{ secrets.GPR_USER }}
+            GPR_KEY=${{ secrets.GPR_KEY }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          context: .
+          file: ${{ needs.setup.outputs.gradle-project-dir }}/Dockerfile
+          push: ${{ inputs.enable-publication }}
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
+
+  publish_sdk_micronaut:
+    name: Publish Micronaut SDK
+    runs-on: ubuntu-latest
+    needs:
+      - setup
+      - binary
+      - static_analysis
+      - test_coverage_verification
+    if: |
+      contains(inputs.enable-openapi-sdk, 'php') &&
+      needs.setup.outputs.publishable == 'true' &&
+      !failure() &&
+      !cancelled() &&
+      (! (contains(inputs.checks, 'unit_tests') && contains(inputs.checks, 'e2e_tests')) || success('test_coverage_verification')) &&
+      (!contains(inputs.checks, 'static_analysis') || success('static_analysis'))
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup asdf-vm
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.11
+
+      - name: Publish SDK
+        uses: kronostechnologies/actions/publish-openapi-sdk@v0.0.11
+        with:
+          publish-task-name: "publishMicronautSdk"
+          version: ${{  needs.setup.outputs.version }}
+          is-release: ${{ needs.setup.outputs.is-release }}
+          gpr-token: ${{ secrets.GPR_KEY }}
+
+  publish_sdk_kotlin:
+    name: Publish Kotlin SDK
+    runs-on: ubuntu-latest
+    needs:
+      - setup
+      - binary
+      - static_analysis
+      - test_coverage_verification
+    if: |
+      contains(inputs.enable-openapi-sdk, 'kotlin') &&
+      needs.setup.outputs.publishable == 'true' &&
+      !failure() &&
+      !cancelled() &&
+      (! (contains(inputs.checks, 'unit_tests') && contains(inputs.checks, 'e2e_tests')) || success('test_coverage_verification')) &&
+      (!contains(inputs.checks, 'static_analysis') || success('static_analysis'))
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup asdf-vm
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.11
+
+      - name: Publish SDK
+        uses: kronostechnologies/actions/publish-openapi-sdk@v0.0.11
+        with:
+          publish-task-name: "publishKotlinSdk"
+          version: ${{  needs.setup.outputs.version }}
+          is-release: ${{ needs.setup.outputs.is-release }}
+          gpr-token: ${{ secrets.GPR_KEY }}
+
+  publish_sdk_php:
+    name: Publish PHP SDK
+    runs-on: ubuntu-latest
+    needs:
+      - setup
+      - binary
+      - static_analysis
+      - test_coverage_verification
+    if: |
+      contains(inputs.enable-openapi-sdk, 'php') &&
+      needs.setup.outputs.publishable == 'true' &&
+      !failure() &&
+      !cancelled() &&
+      (! (contains(inputs.checks, 'unit_tests') && contains(inputs.checks, 'e2e_tests')) || success('test_coverage_verification')) &&
+      (!contains(inputs.checks, 'static_analysis') || success('static_analysis'))
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup asdf-vm
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.11
+
+      - name: Publish SDK
+        uses: kronostechnologies/actions/publish-openapi-sdk@v0.0.11
+        with:
+          publish-task-name: "publishPhpSdk"
+          version: ${{  needs.setup.outputs.version }}
+          is-release: ${{ needs.setup.outputs.is-release }}
+          gpr-token: ${{ secrets.GPR_KEY }}
+
+  publish_sdk_typescript:
+    name: Publish Typescript SDK
+    runs-on: ubuntu-latest
+    needs:
+      - setup
+      - binary
+      - static_analysis
+      - test_coverage_verification
+    if: |
+      contains(inputs.enable-openapi-sdk, 'typescript') &&
+      needs.setup.outputs.publishable == 'true' &&
+      !failure() &&
+      !cancelled() &&
+      (! (contains(inputs.checks, 'unit_tests') && contains(inputs.checks, 'e2e_tests')) || success('test_coverage_verification')) &&
+      (!contains(inputs.checks, 'static_analysis') || success('static_analysis'))
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup asdf-vm
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.11
+
+      - name: Publish SDK
+        uses: kronostechnologies/actions/publish-openapi-sdk@v0.0.11
+        with:
+          publish-task-name: "publishTypescriptSdk"
+          version: ${{  needs.setup.outputs.version }}
+          is-release: ${{ needs.setup.outputs.is-release }}
+          gpr-token: ${{ secrets.GPR_KEY }}
+
+  notify:
+    name: Notify
+    runs-on: ubuntu-latest
+    needs:
+      - setup
+      - compile
+      - static_analysis
+      - unit_tests
+      - e2e_tests
+      - test_coverage_verification
+      - binary
+      - lint_dockerfiles
+      - image
+      - publish_sdk_micronaut
+      - publish_sdk_kotlin
+      - publish_sdk_php
+      - publish_sdk_typescript
+    if: failure() && needs.setup.outputs.publishable == 'true'
+
+    steps:
+      - name: Post workflow status
+        uses: kronostechnologies/actions/notify-workflow-status@v0.0.11
+        with:
+          needs: ${{ toJSON(needs) }}
+          slack-webhook-url: ${{ secrets.SLACK_NOTIFICATION_WEBHOOK_URL }}
