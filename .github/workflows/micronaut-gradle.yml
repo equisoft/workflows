@@ -60,6 +60,8 @@ on:
         required: true
       ECR_AWS_SECRET_ACCESS_KEY:
         required: true
+      ECR_AWS_REGION:
+        required: true
       SLACK_NOTIFICATION_WEBHOOK_URL:
         required: true
 
@@ -483,7 +485,7 @@ jobs:
       - static_analysis
       - test_coverage_verification
     if: |
-      contains(inputs.enable-openapi-sdk, 'php') &&
+      contains(inputs.enable-openapi-sdk, 'micronaut') &&
       needs.setup.outputs.publishable == 'true' &&
       !failure() &&
       !cancelled() &&
