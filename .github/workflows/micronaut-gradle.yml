@@ -7,6 +7,11 @@ on:
         description: "Application name. Used as base to generate jar name, image name, sdk name, etc..."
         required: true
         type: string
+      image-name:
+        description: "Allow to specify a docker image name. By default the image-name is generated from the name and subproject."
+        required: false
+        type: string
+        default: ""
       gradle-subproject:
         description: "Gradle subproject name. ex: bff"
         required: true
@@ -99,10 +104,11 @@ jobs:
       is-release: ${{ steps.metadata.outputs.is-release }}
       publishable: ${{ steps.metadata.outputs.publishable }}
       version: ${{ steps.metadata.outputs.version }}
-      gradle-prefix: ${{ steps.gradle-metadata.outputs.gradle-prefix }}
-      gradle-project-dir: ${{ steps.gradle-metadata.outputs.gradle-project-dir }}
-      jar-name: ${{ steps.gradle-metadata.outputs.jar-name }}
-      openapi-file: ${{ steps.gradle-metadata.outputs.openapi-file }}
+      image-name: ${{ steps.build-metadata.outputs.image-name }}
+      gradle-prefix: ${{ steps.build-metadata.outputs.gradle-prefix }}
+      gradle-project-dir: ${{ steps.build-metadata.outputs.gradle-project-dir }}
+      jar-name: ${{ steps.build-metadata.outputs.jar-name }}
+      openapi-file: ${{ steps.build-metadata.outputs.openapi-file }}
 
     steps:
       - name: Checkout
@@ -118,29 +124,37 @@ jobs:
         uses: kronostechnologies/actions/with-asdf-vm@v0.0.11
 
       - name: Find gradle project metadata
-        id: gradle-metadata
+        id: build-metadata
         shell: bash
         run: |
-          PROJECT_NAME=${{ inputs.name }}
+          BASE_NAME=${{ inputs.name }}
+          FULL_NAME=$BASE_NAME
           GRADLE_SUBPROJECT=${{ inputs.gradle-subproject }}
           GRADLE_PREFIX=
           GRADLE_PROJECT_DIR=${{ inputs.working-directory }}
           VERSION=${{ steps.metadata.outputs.version }}
-          JAR_NAME="$PROJECT-$VERSION-all.jar"
+
+          JAR_NAME="$BASE_NAME-$VERSION-all.jar"
 
           if [[ "$GRADLE_SUBPROJECT" != "" ]]; then
+            FULL_NAME="$BASE_NAME-$GRADLE_SUBPROJECT"
             GRADLE_PREFIX=":$GRADLE_SUBPROJECT"
             GRADLE_PROJECT_DIR="$GRADLE_PROJECT_DIR/$GRADLE_SUBPROJECT"
-            PROJECT_NAME="$PROJECT_NAME-$GRADLE_SUBPROJECT"
             JAR_NAME="$GRADLE_SUBPROJECT-$VERSION-all.jar"
+          fi
+
+          IMAGE_NAME=${{ inputs.image-name }}
+          if [[ "IMAGE_NAME" == "" ]]; then
+            IMAGE_NAME="$FULL_NAME"
           fi
 
           OPENAPI_FILE_PREFIX=${{ inputs.openapi-file-prefix }}
           if [[ "$OPENAPI_FILE_PREFIX" == "" ]]; then
-            OPENAPI_FILE_PREFIX="$PROJECT_NAME"
+            OPENAPI_FILE_PREFIX="$FULL_NAME"
           fi
           OPENAPI_FILE="$OPENAPI_FILE_PREFIX-$VERSION.yml"
 
+          echo "::set-output name=image-name::${IMAGE_NAME}"
           echo "::set-output name=gradle-prefix::${GRADLE_PREFIX}"
           echo "::set-output name=gradle-project-dir::${GRADLE_PROJECT_DIR}"
           echo "::set-output name=jar-name::${JAR_NAME}"
@@ -174,7 +188,7 @@ jobs:
         uses: actions/upload-artifact@v2
         if: success() && inputs.enable-openapi
         with:
-          name: openapi-${{ inputs.name }}-${{ needs.setup.outputs.version }}.yml
+          name: openapi-${{ needs.setup.outputs.openapi-file }}
           path: ${{ needs.setup.outputs.gradle-project-dir }}/build/tmp/kapt3/classes/main/META-INF/swagger/${{ needs.setup.outputs.openapi-file }}
           retention-days: 5
           if-no-files-found: error
@@ -404,7 +418,7 @@ jobs:
         uses: actions/upload-artifact@v2
         if: success()
         with:
-          name: ${{ inputs.name }}-${{ needs.setup.outputs.version }}.jar
+          name: ${{ needs.setup.outputs.jar-name }}
           path: ${{ needs.setup.outputs.gradle-project-dir }}/build/libs/${{ needs.setup.outputs.jar-name }}
           retention-days: 5
           if-no-files-found: error
@@ -443,8 +457,8 @@ jobs:
         id: metadata
         uses: kronostechnologies/actions/docker-metadata@v0.0.11
         with:
-          title: ${{ inputs.name }}
-          image-name: ${{ secrets.ECR_REGISTRY }}/${{ inputs.name }}
+          title: ${{ needs.setup.outputs.image-name }}
+          image-name: ${{ secrets.ECR_REGISTRY }}/${{ needs.setup.outputs.image-name }}
           release: ${{ needs.setup.outputs.is-release }}
           version: ${{ needs.setup.outputs.version }}
 
