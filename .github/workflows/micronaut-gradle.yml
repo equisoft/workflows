@@ -144,7 +144,7 @@ jobs:
           fi
 
           IMAGE_NAME=${{ inputs.image-name }}
-          if [[ "IMAGE_NAME" == "" ]]; then
+          if [[ "$IMAGE_NAME" == "" ]]; then
             IMAGE_NAME="$FULL_NAME"
           fi
 
