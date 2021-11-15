@@ -129,10 +129,10 @@ jobs:
 
       - name: Find application metadata
         id: metadata
-        uses: kronostechnologies/actions/application-metadata@v0.0.12
+        uses: kronostechnologies/actions/application-metadata@v0.0.13
 
       - name: Setup asdf-vm
-        uses: kronostechnologies/actions/with-asdf-vm@v0.0.12
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.13
 
       - name: Find gradle project metadata
         id: build-metadata
@@ -188,7 +188,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Setup asdf-vm
-        uses: kronostechnologies/actions/with-asdf-vm@v0.0.12
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.13
 
       - name: Compile source and test code
         uses: burrunan/gradle-cache-action@v1.10
@@ -222,7 +222,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Setup asdf-vm
-        uses: kronostechnologies/actions/with-asdf-vm@v0.0.12
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.13
 
       - name: Run static check analysis
         uses: burrunan/gradle-cache-action@v1.10
@@ -257,10 +257,10 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Setup asdf-vm
-        uses: kronostechnologies/actions/with-asdf-vm@v0.0.12
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.13
 
       - name: Run unit tests
-        uses: kronostechnologies/actions/gradle-junit@v0.0.12
+        uses: kronostechnologies/actions/gradle-junit@v0.0.13
         with:
           working-directory: ${{ inputs.working-directory }}
           gradle-project-path: ${{ inputs.gradle-subproject }}
@@ -281,10 +281,10 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Setup asdf-vm
-        uses: kronostechnologies/actions/with-asdf-vm@v0.0.12
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.13
 
       - name: Run e2e tests
-        uses: kronostechnologies/actions/gradle-junit@v0.0.12
+        uses: kronostechnologies/actions/gradle-junit@v0.0.13
         with:
           working-directory: ${{ inputs.working-directory }}
           gradle-project-path: ${{ inputs.gradle-subproject }}
@@ -309,10 +309,10 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Setup asdf-vm
-        uses: kronostechnologies/actions/with-asdf-vm@v0.0.12
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.13
 
       - name: Validate test coverage
-        uses: kronostechnologies/actions/gradle-jacoco-check@v0.0.12
+        uses: kronostechnologies/actions/gradle-jacoco-check@v0.0.13
         with:
           working-directory: ${{ inputs.working-directory }}
           gradle-project-path: ${{ inputs.gradle-subproject }}
@@ -331,7 +331,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Setup asdf-vm
-        uses: kronostechnologies/actions/with-asdf-vm@v0.0.12
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.13
 
       - name: Assemble JAR
         uses: burrunan/gradle-cache-action@v1.10
@@ -386,7 +386,7 @@ jobs:
 
       - name: Prepare image data
         id: metadata
-        uses: kronostechnologies/actions/docker-metadata@v0.0.12
+        uses: kronostechnologies/actions/docker-metadata@v0.0.13
         with:
           title: ${{ needs.setup.outputs.image-name }}
           image-name: ${{ secrets.ECR_REGISTRY }}/${{ needs.setup.outputs.image-name }}
@@ -443,10 +443,10 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Setup asdf-vm
-        uses: kronostechnologies/actions/with-asdf-vm@v0.0.12
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.13
 
       - name: Generate SDK
-        uses: kronostechnologies/actions/generate-openapi-sdk@v0.0.12
+        uses: kronostechnologies/actions/generate-openapi-sdk@v0.0.13
         with:
           working-directory: ${{ inputs.working-directory }}
           gradle-project-path: ${{ inputs.gradle-subproject }}
@@ -476,7 +476,7 @@ jobs:
 
     steps:
       - name: Post workflow status
-        uses: kronostechnologies/actions/notify-workflow-status@v0.0.12
+        uses: kronostechnologies/actions/notify-workflow-status@v0.0.13
         with:
           needs: ${{ toJSON(needs) }}
           slack-webhook-url: ${{ secrets.SLACK_NOTIFICATION_WEBHOOK_URL }}
