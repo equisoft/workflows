@@ -281,8 +281,8 @@ jobs:
           aws-region: ${{ secrets.ECR_AWS_REGION }}
           build-args: |
             APPLICATION_VERSION=${{ needs.setup.outputs.version }}
-            GPR_USER=${{ secrets.GHCR_USER }}
-            GPR_KEY=${{ secrets.GHCR_TOKEN }}
+            GPR_USER=${{ secrets.GPR_USER }}
+            GPR_KEY=${{ secrets.GPR_KEY }}
           name: ${{ needs.setup.outputs.image-name }}
           push: ${{ inputs.publish-image && needs.setup.outputs.is-release == 'true' }}
           version: ${{ needs.setup.outputs.version }}

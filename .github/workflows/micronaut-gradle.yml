@@ -66,18 +66,25 @@ on:
         type: string
     secrets:
       GPR_USER:
+        description: A username with write access to Github Package registry.
         required: true
       GPR_KEY:
+        description: A PAT with write access to Github Package registry.
         required: true
       ECR_REGISTRY:
+        description: The AWS ECR registry where the image will be pushed to.
         required: true
       ECR_AWS_ACCESS_KEY_ID:
+        description: An AWS access key ID that has write permissions to the registry.
         required: true
       ECR_AWS_SECRET_ACCESS_KEY:
+        description: An AWS secret access key that has write permissions to the registry.
         required: true
       ECR_AWS_REGION:
+        description: AWS region for the registry.
         required: true
       SLACK_NOTIFICATION_WEBHOOK_URL:
+        description: A Slack webhook where workflow failures will be published to.
         required: true
 
 jobs:
@@ -392,8 +399,8 @@ jobs:
           aws-region: ${{ secrets.ECR_AWS_REGION }}
           build-args: |
             APPLICATION_VERSION=${{ needs.setup.outputs.version }}
-            GPR_USER=${{ secrets.GHCR_USER }}
-            GPR_KEY=${{ secrets.GHCR_TOKEN }}
+            GPR_USER=${{ secrets.GPR_USER }}
+            GPR_KEY=${{ secrets.GPR_KEY }}
           name: ${{ needs.setup.outputs.image-name }}
           push: ${{ inputs.publish-image && needs.setup.outputs.is-release == 'true' }}
           version: ${{ needs.setup.outputs.version }}
