@@ -15,7 +15,7 @@ on:
         description: |
           List of enabled check separated by comma.
           default: static_analysis,unit_tests,lint_dockerfiles
-          available checks: static_analysis,unit_tests,e2e_tests,lint_dockerfiles
+          available checks: static_analysis,unit_tests,e2e_tests,lint_dockerfiles,license_analysis
         required: false
         default: "static_analysis,unit_tests,lint_dockerfiles"
         type: string
@@ -253,6 +253,25 @@ jobs:
             ${{ needs.setup.outputs.gradle-project-dir }}/build/reports/ktlint
           retention-days: 5
 
+  license_analysis:
+    name: License analysis
+    runs-on: ubuntu-latest
+    needs: [setup, compile]
+    if: contains(inputs.checks, 'license_analysis')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup asdf-vm
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.14
+      - name: Run license analysis
+        uses: kronostechnologies/actions/gradle-license-check@v0.0.16
+        with:
+          working-directory: ${{ inputs.working-directory }}
+          gradle-properties: |
+            application.version=${{ needs.setup.outputs.version }}
+            gpr.user=${{ secrets.GPR_USER }}
+            gpr.key=${{ secrets.GPR_KEY }}
+
   unit_tests:
     name: Unit tests
     runs-on: ubuntu-latest
@@ -450,6 +469,7 @@ jobs:
       - setup
       - compile
       - static_analysis
+      - license_analysis
       - unit_tests
       - e2e_tests
       - test_coverage_verification
