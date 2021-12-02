@@ -136,10 +136,10 @@ jobs:
 
       - name: Find application metadata
         id: metadata
-        uses: kronostechnologies/actions/application-metadata@v0.0.15
+        uses: kronostechnologies/actions/application-metadata@v0.0.18
 
       - name: Setup asdf-vm
-        uses: kronostechnologies/actions/with-asdf-vm@v0.0.15
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.18
 
       - name: Find gradle project metadata
         id: build-metadata
@@ -195,7 +195,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Setup asdf-vm
-        uses: kronostechnologies/actions/with-asdf-vm@v0.0.15
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.18
 
       - name: Compile source and test code
         uses: burrunan/gradle-cache-action@v1.10
@@ -229,7 +229,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Setup asdf-vm
-        uses: kronostechnologies/actions/with-asdf-vm@v0.0.15
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.18
 
       - name: Run static check analysis
         uses: burrunan/gradle-cache-action@v1.10
@@ -283,10 +283,10 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Setup asdf-vm
-        uses: kronostechnologies/actions/with-asdf-vm@v0.0.15
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.18
 
       - name: Run unit tests
-        uses: kronostechnologies/actions/gradle-junit@v0.0.15
+        uses: kronostechnologies/actions/gradle-junit@v0.0.18
         with:
           working-directory: ${{ inputs.working-directory }}
           gradle-project-path: ${{ inputs.gradle-subproject }}
@@ -307,10 +307,10 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Setup asdf-vm
-        uses: kronostechnologies/actions/with-asdf-vm@v0.0.15
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.18
 
       - name: Run e2e tests
-        uses: kronostechnologies/actions/gradle-junit@v0.0.15
+        uses: kronostechnologies/actions/gradle-junit@v0.0.18
         with:
           working-directory: ${{ inputs.working-directory }}
           gradle-project-path: ${{ inputs.gradle-subproject }}
@@ -335,10 +335,10 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Setup asdf-vm
-        uses: kronostechnologies/actions/with-asdf-vm@v0.0.15
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.18
 
       - name: Validate test coverage
-        uses: kronostechnologies/actions/gradle-jacoco-check@v0.0.15
+        uses: kronostechnologies/actions/gradle-jacoco-check@v0.0.18
         with:
           working-directory: ${{ inputs.working-directory }}
           gradle-project-path: ${{ inputs.gradle-subproject }}
@@ -357,7 +357,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Setup asdf-vm
-        uses: kronostechnologies/actions/with-asdf-vm@v0.0.15
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.18
 
       - name: Assemble JAR
         uses: burrunan/gradle-cache-action@v1.10
@@ -410,7 +410,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Build and push
-        uses: kronostechnologies/actions/ecr-build-and-push@v0.0.15
+        uses: kronostechnologies/actions/ecr-build-and-push@v0.0.18
         with:
           aws-ecr-registry: ${{ secrets.ECR_REGISTRY }}
           aws-access-key-id: ${{ secrets.ECR_AWS_ACCESS_KEY_ID }}
@@ -420,10 +420,11 @@ jobs:
             APPLICATION_VERSION=${{ needs.setup.outputs.version }}
             GPR_USER=${{ secrets.GPR_USER }}
             GPR_KEY=${{ secrets.GPR_KEY }}
+          dockerfile: ${{ inputs.gradle-subproject }}/Dockerfile
           name: ${{ needs.setup.outputs.image-name }}
           push: ${{ inputs.publish-image && needs.setup.outputs.is-release == 'true' }}
           version: ${{ needs.setup.outputs.version }}
-          working-directory: ${{ needs.setup.outputs.gradle-project-dir }}
+          working-directory: ${{ inputs.working-directory }}
 
   generate_sdk:
     strategy:
@@ -447,10 +448,10 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Setup asdf-vm
-        uses: kronostechnologies/actions/with-asdf-vm@v0.0.15
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.18
 
       - name: Generate SDK
-        uses: kronostechnologies/actions/generate-openapi-sdk@v0.0.15
+        uses: kronostechnologies/actions/generate-openapi-sdk@v0.0.18
         with:
           working-directory: ${{ inputs.working-directory }}
           gradle-project-path: ${{ inputs.gradle-subproject }}
@@ -481,7 +482,7 @@ jobs:
 
     steps:
       - name: Post workflow status
-        uses: kronostechnologies/actions/notify-workflow-status@v0.0.15
+        uses: kronostechnologies/actions/notify-workflow-status@v0.0.18
         with:
           needs: ${{ toJSON(needs) }}
           slack-webhook-url: ${{ secrets.SLACK_NOTIFICATION_WEBHOOK_URL }}
