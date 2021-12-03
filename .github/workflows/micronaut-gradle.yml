@@ -462,6 +462,7 @@ jobs:
             application.version=${{ needs.setup.outputs.version }}
             gpr.user=${{ secrets.GPR_USER }}
             gpr.key=${{ secrets.GPR_KEY }}
+            gpr.write.key=${{ secrets.GPR_KEY }}
 
   notify:
     name: Notify
