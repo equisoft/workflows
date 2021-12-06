@@ -440,6 +440,7 @@ jobs:
     if: |
       !failure() &&
       !cancelled() &&
+      inputs.enable-openapi-sdk != '' &&
       (! (contains(inputs.checks, 'unit_tests') && contains(inputs.checks, 'e2e_tests')) || success('test_coverage_verification')) &&
       (!contains(inputs.checks, 'static_analysis') || success('static_analysis'))
 
