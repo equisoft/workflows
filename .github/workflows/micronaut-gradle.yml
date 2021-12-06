@@ -450,6 +450,12 @@ jobs:
       - name: Setup asdf-vm
         uses: kronostechnologies/actions/with-asdf-vm@v0.0.18
 
+      - name: Setup PHP  # TODO: Change the project setup to do that. Maybe put it into actions/with-asdf-vm?
+        uses: shivammathur/setup-php@v2
+        if: matrix.generator == 'php'
+        with:
+          php-version: "7.4"
+
       - name: Generate SDK
         uses: kronostechnologies/actions/generate-openapi-sdk@v0.0.18
         with:
@@ -462,6 +468,7 @@ jobs:
             application.version=${{ needs.setup.outputs.version }}
             gpr.user=${{ secrets.GPR_USER }}
             gpr.key=${{ secrets.GPR_KEY }}
+            gpr.write.key=${{ secrets.GPR_KEY }}
 
   notify:
     name: Notify
