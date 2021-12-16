@@ -422,7 +422,7 @@ jobs:
             GPR_KEY=${{ secrets.GPR_KEY }}
           dockerfile: ${{ inputs.gradle-subproject }}/Dockerfile
           name: ${{ needs.setup.outputs.image-name }}
-          push: ${{ inputs.publish-image && needs.setup.outputs.is-release == 'true' }}
+          push: ${{ inputs.publish-image }}
           version: ${{ needs.setup.outputs.version }}
           working-directory: ${{ inputs.working-directory }}
 
