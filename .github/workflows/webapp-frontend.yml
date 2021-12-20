@@ -100,7 +100,7 @@ jobs:
 
       - name: Find application metadata
         id: metadata
-        uses: kronostechnologies/actions/application-metadata@v0.0.18
+        uses: kronostechnologies/actions/application-metadata@v0.0.19
 
       - name: Compute artifact names
         id: names
@@ -117,15 +117,15 @@ jobs:
           echo "::set-output name=image-name::${IMAGE_NAME}"
 
       - name: Setup asdf-vm
-        uses: kronostechnologies/actions/with-asdf-vm@v0.0.18
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.19
 
       - name: Install NPM dependencies
-        uses: kronostechnologies/actions/yarn-install@v0.0.18
+        uses: kronostechnologies/actions/yarn-install@v0.0.19
         with:
           working-directory: ${{ inputs.working-directory }}
 
       - name: Generate SDK
-        uses: kronostechnologies/actions/generate-openapi-sdk@v0.0.18
+        uses: kronostechnologies/actions/generate-openapi-sdk@v0.0.19
         with:
           working-directory: backend
           gradle-project-path: bff
@@ -161,15 +161,15 @@ jobs:
           path: backend/bff/sdk/
 
       - name: Setup asdf-vm
-        uses: kronostechnologies/actions/with-asdf-vm@v0.0.18
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.19
 
       - name: Install NPM dependencies
-        uses: kronostechnologies/actions/yarn-install@v0.0.18
+        uses: kronostechnologies/actions/yarn-install@v0.0.19
         with:
           working-directory: ${{ inputs.working-directory }}
 
       - name: Run ESLint
-        uses: kronostechnologies/actions/yarn-eslint@v0.0.18
+        uses: kronostechnologies/actions/yarn-eslint@v0.0.19
         with:
           working-directory: ${{ inputs.working-directory }}
 
@@ -190,15 +190,15 @@ jobs:
           path: backend/bff/sdk/
 
       - name: Setup asdf-vm
-        uses: kronostechnologies/actions/with-asdf-vm@v0.0.18
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.19
 
       - name: Install NPM dependencies
-        uses: kronostechnologies/actions/yarn-install@v0.0.18
+        uses: kronostechnologies/actions/yarn-install@v0.0.19
         with:
           working-directory: ${{ inputs.working-directory }}
 
       - name: Run Stylelint
-        uses: kronostechnologies/actions/yarn-stylelint@v0.0.18
+        uses: kronostechnologies/actions/yarn-stylelint@v0.0.19
         with:
           working-directory: ${{ inputs.working-directory }}
 
@@ -219,15 +219,15 @@ jobs:
           path: backend/bff/sdk/
 
       - name: Setup asdf-vm
-        uses: kronostechnologies/actions/with-asdf-vm@v0.0.18
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.19
 
       - name: Install NPM dependencies
-        uses: kronostechnologies/actions/yarn-install@v0.0.18
+        uses: kronostechnologies/actions/yarn-install@v0.0.19
         with:
           working-directory: ${{ inputs.working-directory }}
 
       - name: Run Jest
-        uses: kronostechnologies/actions/yarn-jest@v0.0.18
+        uses: kronostechnologies/actions/yarn-jest@v0.0.19
         with:
           working-directory: ${{ inputs.working-directory }}
 
@@ -248,10 +248,10 @@ jobs:
           path: backend/bff/sdk/
 
       - name: Setup asdf-vm
-        uses: kronostechnologies/actions/with-asdf-vm@v0.0.18
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.19
 
       - name: Install NPM dependencies
-        uses: kronostechnologies/actions/yarn-install@v0.0.18
+        uses: kronostechnologies/actions/yarn-install@v0.0.19
         with:
           working-directory: ${{ inputs.working-directory }}
 
@@ -273,7 +273,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Build and push
-        uses: kronostechnologies/actions/ecr-build-and-push@v0.0.18
+        uses: kronostechnologies/actions/ecr-build-and-push@v0.0.19
         with:
           aws-ecr-registry: ${{ secrets.ECR_REGISTRY }}
           aws-access-key-id: ${{ secrets.ECR_AWS_ACCESS_KEY_ID }}
@@ -302,7 +302,7 @@ jobs:
 
     steps:
       - name: Post workflow status
-        uses: kronostechnologies/actions/notify-workflow-status@v0.0.18
+        uses: kronostechnologies/actions/notify-workflow-status@v0.0.19
         with:
           needs: ${{ toJSON(needs) }}
           slack-webhook-url: ${{ secrets.SLACK_NOTIFICATION_WEBHOOK_URL }}
