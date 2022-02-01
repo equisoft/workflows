@@ -7,6 +7,11 @@ on:
         description: Application name. Used as base to the various artifacts.
         required: true
         type: string
+      docker-context:
+        description: Relative path under $GITHUB_WORKSPACE for the Docker context.
+        required: false
+        type: string
+        default: ""
       image-name:
         description: Specify a different docker image name. By default the image name is computed from the name.
         required: false
@@ -28,7 +33,7 @@ on:
         description: Relative path under $GITHUB_WORKSPACE where the project is located.
         type: string
         required: false
-        default: "web"
+        default: "."
     secrets:
       GPR_USER:
         description: A username with write access to Github Package registry.
@@ -51,6 +56,10 @@ on:
       SLACK_NOTIFICATION_WEBHOOK_URL:
         description: A Slack webhook where workflow failures will be published to.
         required: true
+    outputs:
+      image-tag:
+        description: Tag of built Docker image (without repository)
+        value: ${{ jobs.image.outputs.image-tag }}
 
 jobs:
   pre_checks:
@@ -87,7 +96,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       name: ${{ inputs.name }}
-      image-name: ${{ steps.names.outputs.image-name }}
+      docker-context: ${{ steps.variables.outputs.docker-context }}
+      image-name: ${{ steps.variables.outputs.image-name }}
       is-release: ${{ steps.metadata.outputs.is-release }}
       publishable: ${{ steps.metadata.outputs.publishable }}
       version: ${{ steps.metadata.outputs.version }}
@@ -100,10 +110,10 @@ jobs:
 
       - name: Find application metadata
         id: metadata
-        uses: kronostechnologies/actions/application-metadata@v0.0.18
+        uses: kronostechnologies/actions/application-metadata@v0.0.23
 
-      - name: Compute artifact names
-        id: names
+      - name: Compute variables
+        id: variables
         shell: bash
         run: |
           BASE_NAME=${{ inputs.name }}
@@ -114,18 +124,24 @@ jobs:
             IMAGE_NAME="$FULL_NAME"
           fi
 
+          DOCKER_CONTEXT=${{ inputs.docker-context }}
+          if [[ "$DOCKER_CONTEXT" == "" ]]; then
+            DOCKER_CONTEXT="${{ inputs.working-directory }}"
+          fi
+
           echo "::set-output name=image-name::${IMAGE_NAME}"
+          echo "::set-output name=docker-context::${DOCKER_CONTEXT}"
 
       - name: Setup asdf-vm
-        uses: kronostechnologies/actions/with-asdf-vm@v0.0.18
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.23
 
       - name: Install NPM dependencies
-        uses: kronostechnologies/actions/yarn-install@v0.0.18
+        uses: kronostechnologies/actions/yarn-install@v0.0.23
         with:
           working-directory: ${{ inputs.working-directory }}
 
       - name: Generate SDK
-        uses: kronostechnologies/actions/generate-openapi-sdk@v0.0.18
+        uses: kronostechnologies/actions/generate-openapi-sdk@v0.0.23
         with:
           working-directory: backend
           gradle-project-path: bff
@@ -161,15 +177,15 @@ jobs:
           path: backend/bff/sdk/
 
       - name: Setup asdf-vm
-        uses: kronostechnologies/actions/with-asdf-vm@v0.0.18
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.23
 
       - name: Install NPM dependencies
-        uses: kronostechnologies/actions/yarn-install@v0.0.18
+        uses: kronostechnologies/actions/yarn-install@v0.0.23
         with:
           working-directory: ${{ inputs.working-directory }}
 
       - name: Run ESLint
-        uses: kronostechnologies/actions/yarn-eslint@v0.0.18
+        uses: kronostechnologies/actions/yarn-eslint@v0.0.23
         with:
           working-directory: ${{ inputs.working-directory }}
 
@@ -190,15 +206,15 @@ jobs:
           path: backend/bff/sdk/
 
       - name: Setup asdf-vm
-        uses: kronostechnologies/actions/with-asdf-vm@v0.0.18
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.23
 
       - name: Install NPM dependencies
-        uses: kronostechnologies/actions/yarn-install@v0.0.18
+        uses: kronostechnologies/actions/yarn-install@v0.0.23
         with:
           working-directory: ${{ inputs.working-directory }}
 
       - name: Run Stylelint
-        uses: kronostechnologies/actions/yarn-stylelint@v0.0.18
+        uses: kronostechnologies/actions/yarn-stylelint@v0.0.23
         with:
           working-directory: ${{ inputs.working-directory }}
 
@@ -219,15 +235,15 @@ jobs:
           path: backend/bff/sdk/
 
       - name: Setup asdf-vm
-        uses: kronostechnologies/actions/with-asdf-vm@v0.0.18
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.23
 
       - name: Install NPM dependencies
-        uses: kronostechnologies/actions/yarn-install@v0.0.18
+        uses: kronostechnologies/actions/yarn-install@v0.0.23
         with:
           working-directory: ${{ inputs.working-directory }}
 
       - name: Run Jest
-        uses: kronostechnologies/actions/yarn-jest@v0.0.18
+        uses: kronostechnologies/actions/yarn-jest@v0.0.23
         with:
           working-directory: ${{ inputs.working-directory }}
 
@@ -248,10 +264,10 @@ jobs:
           path: backend/bff/sdk/
 
       - name: Setup asdf-vm
-        uses: kronostechnologies/actions/with-asdf-vm@v0.0.18
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.23
 
       - name: Install NPM dependencies
-        uses: kronostechnologies/actions/yarn-install@v0.0.18
+        uses: kronostechnologies/actions/yarn-install@v0.0.23
         with:
           working-directory: ${{ inputs.working-directory }}
 
@@ -276,6 +292,8 @@ jobs:
   image:
     name: Build image
     runs-on: ubuntu-latest
+    outputs:
+      image-tag: ${{ needs.setup.outputs.image-name }}:${{ steps.build-and-push.outputs.image-version }}
     needs:
       - setup
       - eslint
@@ -287,7 +305,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Build and push
-        uses: kronostechnologies/actions/ecr-build-and-push@v0.0.18
+        id: build-and-push
+        uses: kronostechnologies/actions/ecr-build-and-push@v0.0.23
         with:
           aws-ecr-registry: ${{ secrets.ECR_REGISTRY }}
           aws-access-key-id: ${{ secrets.ECR_AWS_ACCESS_KEY_ID }}
@@ -297,6 +316,7 @@ jobs:
             APPLICATION_VERSION=${{ needs.setup.outputs.version }}
             GPR_USER=${{ secrets.GPR_USER }}
             GPR_KEY=${{ secrets.GPR_KEY }}
+          context: ${{ needs.setup.outputs.docker-context }}
           name: ${{ needs.setup.outputs.image-name }}
           push: ${{ inputs.publish-image && needs.setup.outputs.is-release == 'true' }}
           version: ${{ needs.setup.outputs.version }}
@@ -316,7 +336,7 @@ jobs:
 
     steps:
       - name: Post workflow status
-        uses: kronostechnologies/actions/notify-workflow-status@v0.0.18
+        uses: kronostechnologies/actions/notify-workflow-status@v0.0.23
         with:
           needs: ${{ toJSON(needs) }}
           slack-webhook-url: ${{ secrets.SLACK_NOTIFICATION_WEBHOOK_URL }}
