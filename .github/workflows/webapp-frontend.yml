@@ -259,6 +259,20 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
         run: yarn build:production
 
+  lint_dockerfiles:
+    name: Lint Dockerfiles
+    runs-on: ubuntu-latest
+    needs: [pre_checks]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Validate Dockerfile
+        uses: equisoft-actions/hadolint@v0.0.1
+        with:
+          dockerfile: ${{ inputs.working-directory }}/Dockerfile
+          working-directory: ${{ inputs.working-directory }}
+
   image:
     name: Build image
     runs-on: ubuntu-latest

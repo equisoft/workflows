@@ -390,9 +390,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Validate Dockerfile
-        uses: hadolint/hadolint-action@v1.6.0
+        uses: equisoft-actions/hadolint@v0.0.1
         with:
           dockerfile: ${{ needs.setup.outputs.gradle-project-dir }}/Dockerfile
+          working-directory: ${{ inputs.working-directory }}
 
   image:
     name: Build image
