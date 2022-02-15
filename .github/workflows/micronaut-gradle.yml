@@ -127,7 +127,6 @@ jobs:
     if: needs.pre_checks.outputs.should_skip != 'true'
     runs-on: ubuntu-latest
     outputs:
-      gradle-prefix: ${{ steps.build-metadata.outputs.gradle-prefix }}
       gradle-project-dir: ${{ steps.build-metadata.outputs.gradle-project-dir }}
       docker-context: ${{ steps.build-metadata.outputs.docker-context }}
       image-name: ${{ steps.build-metadata.outputs.image-name }}
@@ -189,7 +188,6 @@ jobs:
 
           echo "::set-output name=image-name::${IMAGE_NAME}"
           echo "::set-output name=docker-context::${DOCKER_CONTEXT}"
-          echo "::set-output name=gradle-prefix::${GRADLE_PREFIX}"
           echo "::set-output name=gradle-project-dir::${GRADLE_PROJECT_DIR}"
           echo "::set-output name=jar-name::${JAR_NAME}"
           echo "::set-output name=openapi-file::${OPENAPI_FILE}"
@@ -219,7 +217,7 @@ jobs:
           gradle-version: wrapper
           build-root-directory: ${{ inputs.working-directory }}
           gradle-dependencies-cache-key: buildSrc/**/Dependencies.kt
-          arguments: ${{ needs.setup.outputs.gradle-prefix }}:ci-classes
+          arguments: -p ${{ inputs.gradle-subproject }} ci-classes
           properties: |
             application.version=${{ needs.setup.outputs.version }}
             gpr.user=${{ secrets.GPR_USER }}
@@ -253,7 +251,7 @@ jobs:
           gradle-version: wrapper
           build-root-directory: ${{ inputs.working-directory }}
           gradle-dependencies-cache-key: buildSrc/**/Dependencies.kt
-          arguments: ${{ needs.setup.outputs.gradle-prefix }}:ci-check
+          arguments: -p ${{ inputs.gradle-subproject }} ci-check
           properties: |
             application.version=${{ needs.setup.outputs.version }}
             gpr.user=${{ secrets.GPR_USER }}
@@ -363,39 +361,6 @@ jobs:
             gpr.user=${{ secrets.GPR_USER }}
             gpr.key=${{ secrets.GPR_KEY }}
 
-  binary:
-    name: Binary
-    runs-on: ubuntu-latest
-    needs: [setup, compile]
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-
-      - name: Setup asdf-vm
-        uses: kronostechnologies/actions/with-asdf-vm@v0.0.23
-
-      - name: Assemble JAR
-        uses: burrunan/gradle-cache-action@v1.10
-        with:
-          gradle-version: wrapper
-          build-root-directory: ${{ inputs.working-directory }}
-          gradle-dependencies-cache-key: buildSrc/**/Dependencies.kt
-          arguments: ${{ needs.setup.outputs.gradle-prefix }}:assemble
-          properties: |
-            application.version=${{ needs.setup.outputs.version }}
-            gpr.user=${{ secrets.GPR_USER }}
-            gpr.key=${{ secrets.GPR_KEY }}
-
-      - name: Upload JAR
-        uses: actions/upload-artifact@v2
-        if: success()
-        with:
-          name: ${{ needs.setup.outputs.jar-name }}
-          path: ${{ needs.setup.outputs.gradle-project-dir }}/build/libs/${{ needs.setup.outputs.jar-name }}
-          retention-days: 5
-          if-no-files-found: error
-
   lint_dockerfiles:
     name: Lint Dockerfiles
     runs-on: ubuntu-latest
@@ -456,7 +421,6 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - setup
-      - binary
       - static_analysis
       - test_coverage_verification
     if: |
@@ -505,7 +469,6 @@ jobs:
       - unit_tests
       - e2e_tests
       - test_coverage_verification
-      - binary
       - lint_dockerfiles
       - image
       - generate_sdk
