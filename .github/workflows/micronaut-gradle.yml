@@ -29,6 +29,15 @@ on:
         required: false
         type: string
         default: ""
+      native-build:
+        description: |
+          `true` if this project should produce a native executable through GraalVM. This actions expects the
+          Micronaut-Gradle plugin to be configured.
+          A reference implementation is available in webapp-boilerplate: https://github.com/kronostechnologies/webapp-boilerplate/blob/master/backend/bff/build.gradle.kts
+          Defaults to false.
+        required: false
+        type: boolean
+        default: false
       publish-image:
         description: |
           Set to `true` to enable Docker image publication. This will typically only be `false` until the ECR repository is created.
@@ -37,7 +46,7 @@ on:
         default: true
         type: boolean
       enable-openapi:
-        description: "Enable openapi"
+        description: "Enable generation and upload of an OpenAPI specification. Defaults to `false`."
         required: false
         default: false
         type: boolean
@@ -127,11 +136,12 @@ jobs:
     if: needs.pre_checks.outputs.should_skip != 'true'
     runs-on: ubuntu-latest
     outputs:
-      gradle-project-dir: ${{ steps.build-metadata.outputs.gradle-project-dir }}
+      subproject-dir: ${{ steps.build-metadata.outputs.subproject-dir }}
       docker-context: ${{ steps.build-metadata.outputs.docker-context }}
+      dockerfile: ${{ steps.build-metadata.outputs.dockerfile }}
       image-name: ${{ steps.build-metadata.outputs.image-name }}
       is-release: ${{ steps.metadata.outputs.is-release }}
-      jar-name: ${{ steps.build-metadata.outputs.jar-name }}
+      micronaut-gradle-installed: ${{ steps.build-metadata.outputs.micronaut-gradle-installed }}
       openapi-file: ${{ steps.build-metadata.outputs.openapi-file }}
       publishable: ${{ steps.metadata.outputs.publishable }}
       sdk-generators-matrix: ${{ steps.build-metadata.outputs.sdk-generators-matrix }}
@@ -143,31 +153,28 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Find application metadata
+      - name: Application metadata
         id: metadata
         uses: kronostechnologies/actions/application-metadata@v0.0.23
 
       - name: Setup asdf-vm
         uses: kronostechnologies/actions/with-asdf-vm@v0.0.23
 
-      - name: Find gradle project metadata
+      - name: Build metadata
         id: build-metadata
         shell: bash
         run: |
           BASE_NAME=${{ inputs.name }}
           FULL_NAME=$BASE_NAME
           GRADLE_SUBPROJECT=${{ inputs.gradle-subproject }}
-          GRADLE_PREFIX=
-          GRADLE_PROJECT_DIR=${{ inputs.working-directory }}
+          SUBPROJECT_DIR=${{ inputs.working-directory }}
           VERSION=${{ steps.metadata.outputs.version }}
-
-          JAR_NAME="$BASE_NAME-$VERSION-all.jar"
 
           if [[ "$GRADLE_SUBPROJECT" != "" ]]; then
             FULL_NAME="$BASE_NAME-$GRADLE_SUBPROJECT"
-            GRADLE_PREFIX=":$GRADLE_SUBPROJECT"
-            GRADLE_PROJECT_DIR="$GRADLE_PROJECT_DIR/$GRADLE_SUBPROJECT"
-            JAR_NAME="$GRADLE_SUBPROJECT-$VERSION-all.jar"
+            SUBPROJECT_DIR="$SUBPROJECT_DIR/$GRADLE_SUBPROJECT"
+          else
+            GRADLE_SUBPROJECT="."
           fi
 
           IMAGE_NAME=${{ inputs.image-name }}
@@ -175,9 +182,25 @@ jobs:
             IMAGE_NAME="$FULL_NAME"
           fi
 
+          MICRONAUT_GRADLE_INSTALLED=$(grep -q 'id("io.micronaut.application")' "$SUBPROJECT_DIR/build.gradle.kts" 2>&1; echo $?)
+
           DOCKER_CONTEXT=${{ inputs.docker-context }}
-          if [[ "$DOCKER_CONTEXT" == "" ]]; then
-            DOCKER_CONTEXT="${{ inputs.working-directory }}"
+          if [ ${{ inputs.native-build }} = true ]; then
+            if [ "$MICRONAUT_GRADLE_INSTALLED" != 0 ]; then
+              echo "::error ::A native build expects the Micronaut-Gradle plugin to be configured."
+              exit 1
+            fi
+
+            BUILD_CONTEXT="build/docker/native-main"
+            DOCKERFILE="$GRADLE_SUBPROJECT/$BUILD_CONTEXT/DockerfileNative"
+            if [[ "$DOCKER_CONTEXT" == "" ]]; then DOCKER_CONTEXT="$SUBPROJECT_DIR/$BUILD_CONTEXT"; fi
+          elif [ "$MICRONAUT_GRADLE_INSTALLED" = 0 ]; then
+            BUILD_CONTEXT="build/docker/main"
+            DOCKERFILE="$GRADLE_SUBPROJECT/$BUILD_CONTEXT/Dockerfile"
+            if [[ "$DOCKER_CONTEXT" == "" ]]; then DOCKER_CONTEXT="$SUBPROJECT_DIR/$BUILD_CONTEXT"; fi
+          else
+            DOCKERFILE="$GRADLE_SUBPROJECT/Dockerfile"
+            if [[ "$DOCKER_CONTEXT" == "" ]]; then DOCKER_CONTEXT="${{ inputs.working-directory }}"; fi
           fi
 
           OPENAPI_FILE_PREFIX=${{ inputs.openapi-file-prefix }}
@@ -188,8 +211,9 @@ jobs:
 
           echo "::set-output name=image-name::${IMAGE_NAME}"
           echo "::set-output name=docker-context::${DOCKER_CONTEXT}"
-          echo "::set-output name=gradle-project-dir::${GRADLE_PROJECT_DIR}"
-          echo "::set-output name=jar-name::${JAR_NAME}"
+          echo "::set-output name=dockerfile::${DOCKERFILE}"
+          echo "::set-output name=subproject-dir::${SUBPROJECT_DIR}"
+          echo "::set-output name=micronaut-gradle-installed::$( [ "$MICRONAUT_GRADLE_INSTALLED" = 0 ] && echo true || echo false )"
           echo "::set-output name=openapi-file::${OPENAPI_FILE}"
 
           sdk_generators_input="${{ inputs.enable-openapi-sdk }}"
@@ -228,7 +252,7 @@ jobs:
         if: success() && inputs.enable-openapi
         with:
           name: openapi-${{ needs.setup.outputs.openapi-file }}
-          path: ${{ needs.setup.outputs.gradle-project-dir }}/build/tmp/kapt3/classes/main/META-INF/swagger/${{ needs.setup.outputs.openapi-file }}
+          path: ${{ needs.setup.outputs.subproject-dir }}/build/tmp/kapt3/classes/main/META-INF/swagger/${{ needs.setup.outputs.openapi-file }}
           retention-days: 5
           if-no-files-found: error
 
@@ -263,8 +287,8 @@ jobs:
         with:
           name: static-check-reports
           path: |
-            ${{ needs.setup.outputs.gradle-project-dir }}/build/reports/detekt
-            ${{ needs.setup.outputs.gradle-project-dir }}/build/reports/ktlint
+            ${{ needs.setup.outputs.subproject-dir }}/build/reports/detekt
+            ${{ needs.setup.outputs.subproject-dir }}/build/reports/ktlint
           retention-days: 5
 
   license_analysis:
@@ -373,7 +397,7 @@ jobs:
       - name: Validate Dockerfile
         uses: equisoft-actions/hadolint@v0.0.1
         with:
-          dockerfile: ${{ needs.setup.outputs.gradle-project-dir }}/Dockerfile
+          dockerfile: ${{ needs.setup.outputs.dockerfile }}
           working-directory: ${{ inputs.working-directory }}
 
   image:
@@ -386,18 +410,36 @@ jobs:
       needs.setup.outputs.publishable == 'true' &&
       !failure() &&
       !cancelled() &&
-      (! (contains(inputs.checks, 'unit_tests') && contains(inputs.checks, 'e2e_tests')) || success('test_coverage_verification')) &&
+      (!(contains(inputs.checks, 'unit_tests') && contains(inputs.checks, 'e2e_tests')) || success('test_coverage_verification')) &&
       (!contains(inputs.checks, 'static_analysis') || success('static_analysis')) &&
       (!contains(inputs.checks, 'lint_dockerfiles') || success('lint_dockerfiles'))
 
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+
+      - name: Setup asdf-vm
+        uses: kronostechnologies/actions/with-asdf-vm@v0.0.23
+        if: needs.setup.outputs.micronaut-gradle-installed == 'true'
+
+      - name: Prepare image context
+        uses: burrunan/gradle-cache-action@v1.10
+        if: needs.setup.outputs.micronaut-gradle-installed == 'true'
+        with:
+          gradle-version: wrapper
+          build-root-directory: ${{ inputs.working-directory }}
+          gradle-dependencies-cache-key: buildSrc/**/Dependencies.kt
+          arguments: -p ${{ inputs.gradle-subproject }} buildLayers buildNativeLayersTask dockerPrepareContext
+          properties: |
+            application.version=${{ needs.setup.outputs.version }}
+            gpr.user=${{ secrets.GPR_USER }}
+            gpr.key=${{ secrets.GPR_KEY }}
+
       - name: Build and push
         id: build-and-push
-        uses: kronostechnologies/actions/ecr-build-and-push@v0.0.23
+        uses: equisoft-actions/docker-build-and-push@v1.0.0
         with:
-          aws-ecr-registry: ${{ secrets.ECR_REGISTRY }}
+          registry: ${{ secrets.ECR_REGISTRY }}
           aws-access-key-id: ${{ secrets.ECR_AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.ECR_AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.ECR_AWS_REGION }}
@@ -406,7 +448,7 @@ jobs:
             GPR_USER=${{ secrets.GPR_USER }}
             GPR_KEY=${{ secrets.GPR_KEY }}
           context: ${{ needs.setup.outputs.docker-context }}
-          dockerfile: ${{ inputs.gradle-subproject }}/Dockerfile
+          dockerfile: ${{ needs.setup.outputs.dockerfile }}
           name: ${{ needs.setup.outputs.image-name }}
           push: ${{ inputs.publish-image }}
           is-release: ${{ needs.setup.outputs.is-release }}
