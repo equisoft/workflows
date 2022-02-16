@@ -429,7 +429,7 @@ jobs:
           gradle-version: wrapper
           build-root-directory: ${{ inputs.working-directory }}
           gradle-dependencies-cache-key: buildSrc/**/Dependencies.kt
-          arguments: -p ${{ inputs.gradle-subproject }} buildLayers buildNativeLayersTask dockerPrepareContext
+          arguments: -p ${{ inputs.gradle-subproject }} buildLayers buildNativeLayersTask dockerPrepareContext dockerfile
           properties: |
             application.version=${{ needs.setup.outputs.version }}
             gpr.user=${{ secrets.GPR_USER }}
