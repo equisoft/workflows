@@ -404,7 +404,7 @@ jobs:
     name: Build image
     runs-on: ubuntu-latest
     outputs:
-      image-tag: ${{ needs.setup.outputs.image-name }}:${{ steps.build-and-push.outputs.image-version }}
+      image-tag: ${{ steps.output-pushed-image.outputs.image-tag }}
     needs: [setup, lint_dockerfiles, static_analysis, test_coverage_verification]
     if: |
       needs.setup.outputs.publishable == 'true' &&
@@ -454,6 +454,13 @@ jobs:
           is-release: ${{ needs.setup.outputs.is-release }}
           version: ${{ needs.setup.outputs.version }}
           working-directory: ${{ inputs.working-directory }}
+
+      - name: Output pushed image tag
+        id: output-pushed-image
+        if: ${{ inputs.publish-image }} == 'true'
+        shell: bash
+        run: |
+          echo "::set-output name=image-tag::${{ needs.setup.outputs.image-name }}:${{ steps.build-and-push.outputs.image-version }}"
 
   generate_sdk:
     strategy:
