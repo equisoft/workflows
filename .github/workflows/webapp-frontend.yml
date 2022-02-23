@@ -307,7 +307,7 @@ jobs:
 
       - name: Build and push
         id: build-and-push
-        uses: equisoft-actions/docker-build-and-push@v1.0.0
+        uses: equisoft-actions/docker-build-and-push@v1.1.0
         with:
           aws-ecr-registry: ${{ secrets.ECR_REGISTRY }}
           aws-access-key-id: ${{ secrets.ECR_AWS_ACCESS_KEY_ID }}
