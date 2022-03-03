@@ -17,6 +17,11 @@ on:
         required: false
         type: string
         default: ""
+      platforms:
+        description: "List of platforms to build"
+        required: false
+        type: string
+        default: "linux/amd64,linux/arm64"
       publish-image:
         description: |
           Set to `true` to enable Docker image publication. This will typically only be `false` until the ECR repository is created.
@@ -305,6 +310,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
+      - name: Determine platforms to build
+        id: platforms
+        shell: bash
+        run: |
+          if [[ "${{ needs.setup.outputs.is-release }}" == "true" ]]; then
+            PLATFORMS="linux/amd64"
+          else
+            PLATFORMS=${{ inputs.platforms }}
+          fi
+          echo "::set-output name=platforms::${PLATFORMS}"
+
       - name: Build and push
         id: build-and-push
         uses: equisoft-actions/docker-build-and-push@v1.1.0
@@ -319,6 +335,7 @@ jobs:
             GPR_KEY=${{ secrets.GPR_KEY }}
           context: ${{ needs.setup.outputs.docker-context }}
           name: ${{ needs.setup.outputs.image-name }}
+          platforms: ${{ steps.platforms.outputs.platforms }}
           push: ${{ inputs.publish-image }}
           is-release: ${{ needs.setup.outputs.is-release }}
           version: ${{ needs.setup.outputs.version }}
