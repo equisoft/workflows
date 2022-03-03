@@ -182,7 +182,7 @@ jobs:
             IMAGE_NAME="$FULL_NAME"
           fi
 
-          MICRONAUT_GRADLE_INSTALLED=$(grep -q 'id("io.micronaut.application")' "$SUBPROJECT_DIR/build.gradle.kts" 2>&1; echo $?)
+          MICRONAUT_GRADLE_INSTALLED=$(grep -q 'id("io.micronaut.application")\|id("com.equisoft.standards.micronaut")' "$SUBPROJECT_DIR/build.gradle.kts" 2>&1; echo $?)
 
           DOCKER_CONTEXT=${{ inputs.docker-context }}
           if [ ${{ inputs.native-build }} = true ]; then
