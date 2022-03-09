@@ -474,7 +474,7 @@ jobs:
 
       - name: Output pushed image tag
         id: output-pushed-image
-        if: ${{ inputs.publish-image }} == 'true'
+        if: inputs.publish-image == 'true'
         shell: bash
         run: |
           echo "::set-output name=image-tag::${{ needs.setup.outputs.image-name }}:${{ steps.build-and-push.outputs.image-version }}"
