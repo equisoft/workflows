@@ -1,0 +1,94 @@
+name: Docker quality and security checks
+
+on:
+  workflow_call:
+    inputs:
+      defectdojo-engagement:
+        required: true
+        type: string
+      defectdojo-publish:
+        default: true
+        required: false
+        type: boolean
+      dependency-track-publish:
+        default: true
+        required: false
+        type: boolean
+      dependency-track-project-name:
+        required: true
+        type: string
+      image-tag:
+        description: Tag of Docker image (without repository) to verify
+        required: true
+        type: string
+      working-directory:
+        description: Workflow working directory
+        default: '.'
+        required: false
+        type: string
+    secrets:
+      DEFECTDOJO_TOKEN:
+        description: DefectDojo token
+        required: true
+      DEFECTDOJO_URL:
+        description: DefectDojo URL
+        required: true
+      DEPENDENCY_TRACK_API_KEY:
+        description: DependencyTrack API key
+        required: true
+      DEPENDENCY_TRACK_URL:
+        description: DependencyTrack URL
+        required: true
+      REGISTRY:
+        description: The registry where the image will be pulled from.
+        required: true
+      ECR_AWS_ACCESS_KEY_ID:
+        description: An AWS access key ID that has read permissions to the registry.
+        required: true
+      ECR_AWS_SECRET_ACCESS_KEY:
+        description: An AWS secret access key that has read permissions to the registry.
+        required: true
+      ECR_AWS_REGION:
+        description: AWS region for the registry.
+        required: true
+
+jobs:
+  sast:
+    name: Docker SAST
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: SAST
+        uses: equisoft-actions/docker-sast@v1.1.0
+        with:
+          aws-access-key-id: ${{ secrets.ECR_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.ECR_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.ECR_AWS_REGION }}
+          defectdojo-engagement: ${{ inputs.defectdojo-engagement }}
+          defectdojo-publish: ${{ inputs.defectdojo-publish }}
+          defectdojo-token: ${{ secrets.DEFECTDOJO_TOKEN }}
+          defectdojo-url: ${{ secrets.DEFECTDOJO_URL }}
+          image-name: ${{ secrets.REGISTRY }}/${{ inputs.image-tag }}
+          working-directory: ${{ inputs.working-directory }}
+
+  sbom:
+    name: Docker SBOM
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Generate and publish SBOM
+        uses: equisoft-actions/docker-sbom@v1.0.0
+        with:
+          aws-access-key-id: ${{ secrets.ECR_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.ECR_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.ECR_AWS_REGION }}
+          dependency-track-url: ${{ secrets.DEPENDENCY_TRACK_URL }}
+          dependency-track-api-key: ${{ secrets.DEPENDENCY_TRACK_API_KEY }}
+          dependency-track-project-name: ${{ inputs.dependency-track-project-name }}
+          image-name: ${{ secrets.REGISTRY }}/${{ inputs.image-tag }}
+          publish: ${{ inputs.dependency-track-publish }}
+          working-directory: ${{ inputs.working-directory }}
