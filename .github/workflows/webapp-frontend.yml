@@ -387,7 +387,7 @@ jobs:
       - unit_tests
       - compile
       - image
-    if: failure() && needs.setup.outputs.publishable == 'true'
+    if: needs.setup.outputs.publishable == 'true'
 
     steps:
       - name: Post workflow status
