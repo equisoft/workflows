@@ -310,7 +310,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
       - name: Validate Dockerfile
-        uses: equisoft-actions/hadolint@v0.1.0
+        uses: equisoft-actions/hadolint@17a1ce68f15b1e7ee32bcf2b5d838b810f1e29ff
         with:
           dockerfile: ${{ inputs.working-directory }}/Dockerfile
           working-directory: ${{ inputs.working-directory }}
