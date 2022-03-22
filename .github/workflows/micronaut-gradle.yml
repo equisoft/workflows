@@ -434,7 +434,7 @@ jobs:
         if: needs.setup.outputs.micronaut-gradle-installed == 'true'
 
       - name: Set Swap Space
-        uses: pierotofy/set-swap-space@1.0
+        uses: pierotofy/set-swap-space@v1.0
         if: inputs.native-build
         with:
           swap-size-gb: ${{ inputs.native-build-swap-size-gb }}
