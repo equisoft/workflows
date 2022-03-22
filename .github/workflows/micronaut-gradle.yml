@@ -38,6 +38,12 @@ on:
         required: false
         type: boolean
         default: false
+      native-build-swap-size-gb:
+        description: |
+          Swap space to create, in Gigabytes for native build.
+        required: false
+        type: number
+        default: 10
       platforms:
         description: "List of platforms to build"
         required: false
@@ -426,6 +432,12 @@ jobs:
       - name: Setup asdf-vm
         uses: kronostechnologies/actions/with-asdf-vm@v0.0.23
         if: needs.setup.outputs.micronaut-gradle-installed == 'true'
+
+      - name: Set Swap Space
+        uses: pierotofy/set-swap-space@1.0
+        if: inputs.native-build
+        with:
+          swap-size-gb: ${{ inputs.native-build-swap-size-gb }}
 
       - name: Prepare image context
         uses: burrunan/gradle-cache-action@v1.10
