@@ -173,7 +173,7 @@ jobs:
             gpr.key=${{ secrets.GPR_KEY }}
 
       - name: Store SDK output
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         if: success() && inputs.generate-sdk
         with:
           name: sdk_output
