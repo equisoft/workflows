@@ -259,7 +259,7 @@ jobs:
             gpr.key=${{ secrets.GPR_KEY }}
 
       - name: Upload OpenAPI spec
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         if: success() && inputs.enable-openapi
         with:
           name: openapi-${{ needs.setup.outputs.openapi-file }}
@@ -293,7 +293,7 @@ jobs:
             gpr.key=${{ secrets.GPR_KEY }}
 
       - name: Upload results
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         if: success() || failure()
         with:
           name: static-check-reports
