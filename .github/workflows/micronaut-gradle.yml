@@ -38,12 +38,6 @@ on:
         required: false
         type: boolean
         default: false
-      native-build-swap-size-gb:
-        description: |
-          Swap space to create, in Gigabytes for native build.
-        required: false
-        type: number
-        default: 10
       platforms:
         description: "List of platforms to build"
         required: false
@@ -253,6 +247,8 @@ jobs:
           build-root-directory: ${{ inputs.working-directory }}
           gradle-dependencies-cache-key: buildSrc/**/Dependencies.kt
           arguments: -p ${{ inputs.gradle-subproject }} ci-classes
+          concurrent: true
+          gradle-distribution-sha-256-sum-warning: false
           properties: |
             application.version=${{ needs.setup.outputs.version }}
             gpr.user=${{ secrets.GPR_USER }}
@@ -287,6 +283,8 @@ jobs:
           build-root-directory: ${{ inputs.working-directory }}
           gradle-dependencies-cache-key: buildSrc/**/Dependencies.kt
           arguments: -p ${{ inputs.gradle-subproject }} ci-check
+          concurrent: true
+          gradle-distribution-sha-256-sum-warning: false
           properties: |
             application.version=${{ needs.setup.outputs.version }}
             gpr.user=${{ secrets.GPR_USER }}
@@ -413,7 +411,7 @@ jobs:
 
   image:
     name: Build image
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       image-tag: ${{ steps.output-pushed-image.outputs.image-tag }}
     needs: [setup, lint_dockerfiles, static_analysis, test_coverage_verification]
@@ -433,12 +431,6 @@ jobs:
         uses: kronostechnologies/actions/with-asdf-vm@v0.0.23
         if: needs.setup.outputs.micronaut-gradle-installed == 'true'
 
-      - name: Set Swap Space
-        uses: pierotofy/set-swap-space@v1.0
-        if: inputs.native-build
-        with:
-          swap-size-gb: ${{ inputs.native-build-swap-size-gb }}
-
       - name: Prepare image context
         uses: burrunan/gradle-cache-action@v1.10
         if: needs.setup.outputs.micronaut-gradle-installed == 'true'
@@ -447,6 +439,8 @@ jobs:
           build-root-directory: ${{ inputs.working-directory }}
           gradle-dependencies-cache-key: buildSrc/**/Dependencies.kt
           arguments: -p ${{ inputs.gradle-subproject }} buildLayers buildNativeLayersTask dockerPrepareContext dockerfile
+          concurrent: true
+          gradle-distribution-sha-256-sum-warning: false
           properties: |
             application.version=${{ needs.setup.outputs.version }}
             gpr.user=${{ secrets.GPR_USER }}
@@ -465,7 +459,7 @@ jobs:
 
       - name: Build and push
         id: build-and-push
-        uses: equisoft-actions/docker-build-and-push@v1.1.1
+        uses: equisoft-actions/docker-build-and-push@v1.3.0
         with:
           registry: ${{ secrets.ECR_REGISTRY }}
           aws-access-key-id: ${{ secrets.ECR_AWS_ACCESS_KEY_ID }}
@@ -481,6 +475,8 @@ jobs:
           platforms: ${{ steps.platforms.outputs.platforms }}
           push: ${{ inputs.publish-image }}
           is-release: ${{ needs.setup.outputs.is-release }}
+          max-memory: 6Gi
+          use-emulation: false
           version: ${{ needs.setup.outputs.version }}
           working-directory: ${{ inputs.working-directory }}
 
