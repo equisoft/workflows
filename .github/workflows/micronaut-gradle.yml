@@ -148,6 +148,8 @@ jobs:
       is-release: ${{ steps.metadata.outputs.is-release }}
       micronaut-gradle-installed: ${{ steps.build-metadata.outputs.micronaut-gradle-installed }}
       openapi-file: ${{ steps.build-metadata.outputs.openapi-file }}
+      use-emulation: ${{ steps.build-metadata.outputs.use-emulation }}
+      build-image-runner: ${{ steps.build-metadata.outputs.build-image-runner }}
       publishable: ${{ steps.metadata.outputs.publishable }}
       sdk-generators-matrix: ${{ steps.build-metadata.outputs.sdk-generators-matrix }}
       version: ${{ steps.metadata.outputs.version }}
@@ -188,6 +190,8 @@ jobs:
           fi
 
           MICRONAUT_GRADLE_INSTALLED=$(grep -q 'id("io.micronaut.application")\|id("com.equisoft.standards.micronaut")' "$SUBPROJECT_DIR/build.gradle.kts" 2>&1; echo $?)
+          BUILD_IMAGE_RUNNER="ubuntu-latest"
+          USE_EMULATION="true"
 
           DOCKER_CONTEXT=${{ inputs.docker-context }}
           if [ ${{ inputs.native-build }} = true ]; then
@@ -195,6 +199,9 @@ jobs:
               echo "::error ::A native build expects the Micronaut-Gradle plugin to be configured."
               exit 1
             fi
+
+            BUILD_IMAGE_RUNNER="self-hosted"
+            USE_EMULATION="false"
 
             BUILD_CONTEXT="build/docker/native-main"
             DOCKERFILE="$GRADLE_SUBPROJECT/$BUILD_CONTEXT/DockerfileNative"
@@ -220,6 +227,8 @@ jobs:
           echo "::set-output name=subproject-dir::${SUBPROJECT_DIR}"
           echo "::set-output name=micronaut-gradle-installed::$( [ "$MICRONAUT_GRADLE_INSTALLED" = 0 ] && echo true || echo false )"
           echo "::set-output name=openapi-file::${OPENAPI_FILE}"
+          echo "::set-output name=build-image-runner::${BUILD_IMAGE_RUNNER}"
+          echo "::set-output name=use-emulation::${USE_EMULATION}"
 
           sdk_generators_input="${{ inputs.enable-openapi-sdk }}"
           sdk_generators_input="${sdk_generators_input//,/$'\n'}"
@@ -411,7 +420,7 @@ jobs:
 
   image:
     name: Build image
-    runs-on: self-hosted
+    runs-on: ${{ needs.setup.outputs.build-image-runner }}
     outputs:
       image-tag: ${{ steps.output-pushed-image.outputs.image-tag }}
     needs: [setup, lint_dockerfiles, static_analysis, test_coverage_verification]
@@ -476,7 +485,7 @@ jobs:
           push: ${{ inputs.publish-image }}
           is-release: ${{ needs.setup.outputs.is-release }}
           max-memory: 6Gi
-          use-emulation: false
+          use-emulation: ${{ needs.setup.outputs.use-emulation }}
           version: ${{ needs.setup.outputs.version }}
           working-directory: ${{ inputs.working-directory }}
 
