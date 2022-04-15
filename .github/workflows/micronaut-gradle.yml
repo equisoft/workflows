@@ -484,7 +484,7 @@ jobs:
           platforms: ${{ steps.platforms.outputs.platforms }}
           push: ${{ inputs.publish-image }}
           is-release: ${{ needs.setup.outputs.is-release }}
-          max-memory: 6Gi
+          max-memory: 7Gi
           use-emulation: ${{ needs.setup.outputs.use-emulation }}
           version: ${{ needs.setup.outputs.version }}
           working-directory: ${{ inputs.working-directory }}
